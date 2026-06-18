@@ -58,6 +58,34 @@
             align-items: start;
         }
 
+        .mode-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .mode-tab {
+            flex: 1;
+            padding: 10px 12px;
+            border-radius: 999px;
+            border: 1px solid var(--line);
+            background: var(--card-soft);
+            color: var(--text);
+        }
+
+        .mode-tab.active {
+            border-color: rgba(174, 87, 49, 0.45);
+            background: rgba(174, 87, 49, 0.10);
+        }
+
+        .mode-panel {
+            display: none;
+        }
+
+        .mode-panel.active {
+            display: block;
+        }
+
         .card {
             padding: 14px;
             border-radius: 20px;
@@ -160,6 +188,24 @@
             background: white;
         }
 
+        input[type="file"] {
+            padding: 9px;
+        }
+
+        .format-line {
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px dashed rgba(93, 67, 47, 0.22);
+            background: rgba(255, 255, 255, 0.55);
+            color: var(--muted);
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+
+        .hidden-format {
+            display: none;
+        }
+
         .actions {
             display: flex;
             gap: 8px;
@@ -231,6 +277,47 @@
             background: rgba(255, 255, 255, 0.55);
         }
 
+        .bulk-status {
+            display: none;
+            margin-top: 10px;
+            padding: 12px;
+            border-radius: 14px;
+            border: 1px solid var(--line);
+            background: var(--card-soft);
+        }
+
+        .bulk-status.active {
+            display: block;
+        }
+
+        .progress-track {
+            width: 100%;
+            height: 10px;
+            margin: 10px 0;
+            border-radius: 999px;
+            background: rgba(93, 67, 47, 0.12);
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+            transition: width 180ms ease;
+        }
+
+        .bulk-meta {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            color: var(--muted);
+        }
+
+        .bulk-error {
+            margin-top: 10px;
+            color: var(--accent-dark);
+        }
+
         @media (max-width: 980px) {
             .layout {
                 grid-template-columns: 1fr;
@@ -243,7 +330,8 @@
             }
 
             .toolbar,
-            .actions {
+            .actions,
+            .mode-tabs {
                 width: 100%;
                 flex-direction: column;
             }
@@ -288,6 +376,11 @@
                 {% endwith %}
 
                 <form method="post" action="{{ url_for('web_preview') }}">
+                    <div class="mode-tabs">
+                        <button class="mode-tab active" type="button" data-mode-button="single">Single</button>
+                        <button class="mode-tab" type="button" data-mode-button="bulk">Bulk</button>
+                    </div>
+
                     <div class="type-grid">
                         {% for type_key, type_label in letter_types %}
                             {% set config = schema[type_key] %}
@@ -300,31 +393,62 @@
                         {% endfor %}
                     </div>
 
-                    {% for type_key, config in schema.items() %}
-                        {% set field_count = config.fields|length %}
-                        <div class="field-group {% if selected_type == type_key %}active{% endif %}" data-letter-group="{{ type_key }}">
-                            <div class="field-grid {% if field_count > 1 %}two-col{% endif %}">
-                                {% for field in config.fields %}
-                                    <div>
-                                        <label for="{{ type_key }}_{{ field.name }}">{{ field.label }}</label>
-                                        <input
-                                            id="{{ type_key }}_{{ field.name }}"
-                                            name="{{ field.name }}"
-                                            type="{{ field.type }}"
-                                            value="{{ form_values.get(field.name, '') if selected_type == type_key else '' }}"
-                                            {% if field.placeholder %}placeholder="{{ field.placeholder }}"{% endif %}
-                                            {% if field.required %}required{% endif %}
-                                            autocomplete="off"
-                                        >
-                                    </div>
-                                {% endfor %}
+                    <div class="mode-panel active" data-mode-panel="single">
+                        {% for type_key, config in schema.items() %}
+                            {% set field_count = config.fields|length %}
+                            <div class="field-group {% if selected_type == type_key %}active{% endif %}" data-letter-group="{{ type_key }}">
+                                <div class="field-grid {% if field_count > 1 %}two-col{% endif %}">
+                                    {% for field in config.fields %}
+                                        <div>
+                                            <label for="{{ type_key }}_{{ field.name }}">{{ field.label }}</label>
+                                            <input
+                                                id="{{ type_key }}_{{ field.name }}"
+                                                name="{{ field.name }}"
+                                                type="{{ field.type }}"
+                                                value="{{ form_values.get(field.name, '') if selected_type == type_key else '' }}"
+                                                {% if field.placeholder %}placeholder="{{ field.placeholder }}"{% endif %}
+                                                {% if field.required %}required{% endif %}
+                                                autocomplete="off"
+                                            >
+                                        </div>
+                                    {% endfor %}
+                                </div>
                             </div>
-                        </div>
-                    {% endfor %}
+                        {% endfor %}
 
+                        <div class="actions">
+                            <button class="primary" type="submit">Preview</button>
+                            <button class="secondary" type="submit" formaction="{{ url_for('web_clear_draft') }}">Clear</button>
+                        </div>
+                    </div>
+                </form>
+
+                <form class="mode-panel" data-mode-panel="bulk" id="bulkForm" enctype="multipart/form-data">
+                    <input type="hidden" name="letter_type" id="bulkLetterType" value="{{ selected_type }}">
+                    {% for type_key, header_format in bulk_header_formats.items() %}
+                        <div class="format-line {% if selected_type != type_key %}hidden-format{% endif %}" data-format-line="{{ type_key }}">{{ header_format }}</div>
+                    {% endfor %}
+                    <div style="margin-top: 10px;">
+                        <input type="file" name="csv_file" accept=".csv,text/csv" required>
+                    </div>
                     <div class="actions">
-                        <button class="primary" type="submit">Preview</button>
-                        <button class="secondary" type="submit" formaction="{{ url_for('web_clear_draft') }}">Clear</button>
+                        <button class="primary" type="submit">Start Bulk</button>
+                    </div>
+
+                    <div class="bulk-status" id="bulkStatus">
+                        <div class="bulk-meta">
+                            <strong id="bulkState">Queued</strong>
+                            <span id="bulkCount">0/0</span>
+                        </div>
+                        <div class="progress-track"><div class="progress-fill" id="bulkProgress"></div></div>
+                        <div class="bulk-meta">
+                            <span id="bulkSent">Sent 0</span>
+                            <span id="bulkFailed">Failed 0</span>
+                        </div>
+                        <div class="bulk-error" id="bulkError"></div>
+                        <div class="actions" id="bulkExportWrap" style="display: none;">
+                            <a class="button secondary" id="bulkExportLink" href="#">Export Failed CSV</a>
+                        </div>
                     </div>
                 </form>
             </section>
@@ -389,6 +513,11 @@
     <script>
         const groups = document.querySelectorAll('[data-letter-group]');
         const radios = document.querySelectorAll('input[name="letter_type"]');
+        const modeButtons = document.querySelectorAll('[data-mode-button]');
+        const modePanels = document.querySelectorAll('[data-mode-panel]');
+        const bulkLetterType = document.querySelector('#bulkLetterType');
+        const formatLines = document.querySelectorAll('[data-format-line]');
+        const previewCard = document.querySelector('aside.card');
 
         function setActiveGroup(type) {
             groups.forEach((group) => {
@@ -407,15 +536,96 @@
                     }
                 });
             });
+
+            if (bulkLetterType) {
+                bulkLetterType.value = type;
+            }
+            formatLines.forEach((line) => {
+                line.style.display = line.dataset.formatLine === type ? 'block' : 'none';
+            });
         }
 
         radios.forEach((radio) => {
             radio.addEventListener('change', () => setActiveGroup(radio.value));
         });
 
+        modeButtons.forEach((button) => {
+            button.addEventListener('click', () => {
+                const mode = button.dataset.modeButton;
+                modeButtons.forEach((item) => item.classList.toggle('active', item === button));
+                modePanels.forEach((panel) => panel.classList.toggle('active', panel.dataset.modePanel === mode));
+            });
+        });
+
         const selected = document.querySelector('input[name="letter_type"]:checked');
         if (selected) {
             setActiveGroup(selected.value);
+        }
+
+        if (previewCard && previewCard.querySelector('.preview-frame') && window.matchMedia('(max-width: 640px)').matches) {
+            previewCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        const bulkForm = document.querySelector('#bulkForm');
+        const bulkStatus = document.querySelector('#bulkStatus');
+        const bulkState = document.querySelector('#bulkState');
+        const bulkCount = document.querySelector('#bulkCount');
+        const bulkProgress = document.querySelector('#bulkProgress');
+        const bulkSent = document.querySelector('#bulkSent');
+        const bulkFailed = document.querySelector('#bulkFailed');
+        const bulkError = document.querySelector('#bulkError');
+        const bulkExportWrap = document.querySelector('#bulkExportWrap');
+        const bulkExportLink = document.querySelector('#bulkExportLink');
+
+        function renderBulkJob(job) {
+            const total = job.total || 0;
+            const processed = job.processed || 0;
+            const percent = total ? Math.round((processed / total) * 100) : 0;
+            bulkState.textContent = job.status;
+            bulkCount.textContent = `${processed}/${total}`;
+            bulkProgress.style.width = `${percent}%`;
+            bulkSent.textContent = `Sent ${job.sent || 0}`;
+            bulkFailed.textContent = `Failed ${job.failed || 0}`;
+            bulkError.textContent = job.current ? `Current: ${job.current}` : '';
+
+            if (job.failed > 0 && ['completed', 'failed'].includes(job.status)) {
+                bulkExportWrap.style.display = 'flex';
+                bulkExportLink.href = `/app/bulk/failed/${job.id}`;
+            }
+        }
+
+        async function pollBulkJob(jobId) {
+            const response = await fetch(`/app/bulk/status/${jobId}`);
+            const data = await response.json();
+            if (!data.ok) {
+                bulkError.textContent = data.error || 'Unable to read status.';
+                return;
+            }
+            renderBulkJob(data.job);
+            if (!['completed', 'failed'].includes(data.job.status)) {
+                setTimeout(() => pollBulkJob(jobId), 1000);
+            }
+        }
+
+        if (bulkForm) {
+            bulkForm.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                bulkError.textContent = '';
+                bulkExportWrap.style.display = 'none';
+                bulkStatus.classList.add('active');
+
+                const response = await fetch('/app/bulk/start', {
+                    method: 'POST',
+                    body: new FormData(bulkForm)
+                });
+                const data = await response.json();
+                if (!data.ok) {
+                    bulkState.textContent = 'error';
+                    bulkError.textContent = data.error || 'Bulk upload failed.';
+                    return;
+                }
+                pollBulkJob(data.job_id);
+            });
         }
     </script>
 </body>

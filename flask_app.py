@@ -3,9 +3,10 @@ import asyncio
 import logging
 from collections import deque
 from functools import wraps
-from flask import Flask, flash, redirect, render_template, request, send_file, session, url_for
+from flask import Flask, Response, flash, jsonify, redirect, render_template, request, send_file, session, url_for
 
 # Your Custom Modules (Must be in the same folder)
+import bulk_service
 import pdf_generator
 import database_handler
 import razorpay_handler
@@ -530,6 +531,7 @@ def build_dashboard_context():
         "draft_label": draft_label,
         "form_values": form_values,
         "preview_token": preview_token,
+        "bulk_header_formats": bulk_service.get_header_formats(),
     }
 
 
@@ -641,6 +643,48 @@ def web_preview_image():
         return ("Preview file missing", 404)
 
     return send_file(preview_path, mimetype="image/png")
+
+
+@app.route("/app/bulk/start", methods=["POST"])
+@login_required
+def web_bulk_start():
+    letter_type = request.form.get("letter_type", "")
+    upload = request.files.get("csv_file")
+
+    if not upload:
+        return jsonify({"ok": False, "error": "Upload a CSV file."}), 400
+
+    try:
+        rows = bulk_service.parse_csv_upload(letter_type, upload)
+        job_id = bulk_service.create_bulk_job(letter_type, rows)
+        return jsonify({"ok": True, "job_id": job_id})
+    except Exception as exc:
+        logging.exception("Bulk upload failed")
+        return jsonify({"ok": False, "error": str(exc)}), 400
+
+
+@app.route("/app/bulk/status/<job_id>", methods=["GET"])
+@login_required
+def web_bulk_status(job_id):
+    job = bulk_service.get_bulk_job(job_id)
+    if not job:
+        return jsonify({"ok": False, "error": "Bulk job not found."}), 404
+    return jsonify({"ok": True, "job": job})
+
+
+@app.route("/app/bulk/failed/<job_id>", methods=["GET"])
+@login_required
+def web_bulk_failed(job_id):
+    try:
+        csv_text = bulk_service.export_failed_rows(job_id)
+    except Exception as exc:
+        return Response(str(exc), status=404)
+
+    return Response(
+        csv_text,
+        mimetype="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=failed-{job_id}.csv"},
+    )
 
 
 # ==========================================
