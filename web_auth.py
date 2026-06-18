@@ -64,6 +64,7 @@ def complete_login(otp: str) -> dict:
     status = database_handler.get_user_status(user_id)
     if status.get("status") == "not_found":
         database_handler.register_new_user(user_id, pending["name"] or pending["email"])
+        database_handler.update_user_subscription(user_id)
         database_handler.clear_user_cache(user_id)
         status = database_handler.get_user_status(user_id)
 
