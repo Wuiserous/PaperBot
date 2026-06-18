@@ -1,5 +1,8 @@
 import csv
 import io
+import json
+import os
+import sqlite3
 import threading
 import time
 import uuid
@@ -12,9 +15,9 @@ import letter_service
 
 RATE_LIMIT_INTERVAL_SECONDS = 0.35
 MAX_BULK_ROWS = 500
+DB_PATH = os.getenv("BULK_JOB_DB", os.path.join(os.path.dirname(os.path.abspath(__file__)), "bulk_jobs.sqlite3"))
 
-_jobs: Dict[str, dict] = {}
-_jobs_lock = threading.Lock()
+_db_lock = threading.Lock()
 
 
 def get_required_headers(letter_type: str) -> List[str]:
@@ -70,21 +73,22 @@ def parse_csv_upload(letter_type: str, file_storage) -> List[dict]:
 
 
 def create_bulk_job(letter_type: str, rows: List[dict]) -> str:
+    _init_db()
+
+    if _has_running_job():
+        raise ValueError("A bulk job is already running. Wait for it to finish.")
+
     job_id = uuid.uuid4().hex
-    with _jobs_lock:
-        _jobs[job_id] = {
-            "id": job_id,
-            "letter_type": letter_type,
-            "status": "queued",
-            "total": len(rows),
-            "processed": 0,
-            "sent": 0,
-            "failed": 0,
-            "current": "",
-            "errors": [],
-            "started_at": None,
-            "finished_at": None,
-        }
+    now = _now()
+    with _connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO bulk_jobs
+            (id, letter_type, status, total, processed, sent, failed, current, errors_json, started_at, finished_at, updated_at)
+            VALUES (?, ?, ?, ?, 0, 0, 0, '', '[]', NULL, NULL, ?)
+            """,
+            (job_id, letter_type, "queued", len(rows), now),
+        )
 
     worker = threading.Thread(target=_run_bulk_job, args=(job_id, letter_type, rows), daemon=True)
     worker.start()
@@ -92,9 +96,10 @@ def create_bulk_job(letter_type: str, rows: List[dict]) -> str:
 
 
 def get_bulk_job(job_id: str) -> Optional[dict]:
-    with _jobs_lock:
-        job = _jobs.get(job_id)
-        return dict(job) if job else None
+    _init_db()
+    with _connect() as conn:
+        row = conn.execute("SELECT * FROM bulk_jobs WHERE id = ?", (job_id,)).fetchone()
+    return _row_to_job(row) if row else None
 
 
 def export_failed_rows(job_id: str) -> str:
@@ -111,20 +116,99 @@ def export_failed_rows(job_id: str) -> str:
     return output.getvalue()
 
 
+def _connect():
+    conn = sqlite3.connect(DB_PATH, timeout=30)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def _init_db() -> None:
+    with _db_lock:
+        os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+        with _connect() as conn:
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS bulk_jobs (
+                    id TEXT PRIMARY KEY,
+                    letter_type TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    total INTEGER NOT NULL,
+                    processed INTEGER NOT NULL,
+                    sent INTEGER NOT NULL,
+                    failed INTEGER NOT NULL,
+                    current TEXT NOT NULL,
+                    errors_json TEXT NOT NULL,
+                    started_at TEXT,
+                    finished_at TEXT,
+                    updated_at TEXT NOT NULL
+                )
+                """
+            )
+
+
+def _has_running_job() -> bool:
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT id FROM bulk_jobs WHERE status IN ('queued', 'running') LIMIT 1"
+        ).fetchone()
+    return row is not None
+
+
+def _row_to_job(row: sqlite3.Row) -> dict:
+    return {
+        "id": row["id"],
+        "letter_type": row["letter_type"],
+        "status": row["status"],
+        "total": row["total"],
+        "processed": row["processed"],
+        "sent": row["sent"],
+        "failed": row["failed"],
+        "current": row["current"],
+        "errors": json.loads(row["errors_json"] or "[]"),
+        "started_at": row["started_at"],
+        "finished_at": row["finished_at"],
+        "updated_at": row["updated_at"],
+    }
+
+
 def _update_job(job_id: str, **updates) -> None:
-    with _jobs_lock:
-        if job_id in _jobs:
-            _jobs[job_id].update(updates)
+    if not updates:
+        return
+
+    updates["updated_at"] = _now()
+    columns = ", ".join(f"{key} = ?" for key in updates)
+    values = list(updates.values())
+    values.append(job_id)
+
+    with _connect() as conn:
+        conn.execute(f"UPDATE bulk_jobs SET {columns} WHERE id = ?", values)
+
+
+def _increment_job(job_id: str, **increments) -> None:
+    if not increments:
+        return
+
+    clauses = [f"{key} = {key} + ?" for key in increments]
+    clauses.append("updated_at = ?")
+    values = list(increments.values())
+    values.extend([_now(), job_id])
+
+    with _connect() as conn:
+        conn.execute(f"UPDATE bulk_jobs SET {', '.join(clauses)} WHERE id = ?", values)
 
 
 def _append_error(job_id: str, error_row: dict) -> None:
-    with _jobs_lock:
-        if job_id in _jobs:
-            _jobs[job_id]["errors"].append(error_row)
+    job = get_bulk_job(job_id)
+    if not job:
+        return
+
+    errors = job.get("errors", [])
+    errors.append(error_row)
+    _update_job(job_id, errors_json=json.dumps(errors))
 
 
 def _run_bulk_job(job_id: str, letter_type: str, rows: List[dict]) -> None:
-    _update_job(job_id, status="running", started_at=datetime.utcnow().isoformat())
+    _update_job(job_id, status="running", started_at=_now())
 
     for row in rows:
         row_number = row.get("_row_number", "")
@@ -134,7 +218,7 @@ def _run_bulk_job(job_id: str, letter_type: str, rows: List[dict]) -> None:
         preview_payload = None
         try:
             form_data = {key: value for key, value in row.items() if not key.startswith("_")}
-            preview_payload = letter_service.build_letter_preview(letter_type, form_data)
+            preview_payload = letter_service.build_letter_preview(letter_type, form_data, create_preview=False)
             sent, recipient_data = letter_service.send_letter_from_preview(preview_payload)
 
             if not sent:
@@ -147,8 +231,7 @@ def _run_bulk_job(job_id: str, letter_type: str, rows: List[dict]) -> None:
                 "Web App Bulk",
                 "Sent",
             )
-            with _jobs_lock:
-                _jobs[job_id]["sent"] += 1
+            _increment_job(job_id, sent=1)
 
         except Exception as exc:
             error_row = {
@@ -162,16 +245,18 @@ def _run_bulk_job(job_id: str, letter_type: str, rows: List[dict]) -> None:
                 "error": str(exc),
             }
             _append_error(job_id, error_row)
-            with _jobs_lock:
-                _jobs[job_id]["failed"] += 1
+            _increment_job(job_id, failed=1)
         finally:
             if preview_payload:
                 letter_service.cleanup_files(preview_payload.get("pdf_path"), preview_payload.get("preview_path"))
 
-            with _jobs_lock:
-                _jobs[job_id]["processed"] += 1
-
+            _increment_job(job_id, processed=1)
             time.sleep(RATE_LIMIT_INTERVAL_SECONDS)
 
-    final_status = "failed" if get_bulk_job(job_id)["failed"] else "completed"
-    _update_job(job_id, status=final_status, current="", finished_at=datetime.utcnow().isoformat())
+    job = get_bulk_job(job_id) or {}
+    final_status = "failed" if job.get("failed") else "completed"
+    _update_job(job_id, status=final_status, current="", finished_at=_now())
+
+
+def _now() -> str:
+    return datetime.utcnow().isoformat()

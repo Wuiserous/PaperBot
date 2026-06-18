@@ -3,6 +3,8 @@ env.txt
 user_status_cache.json
 bot_memory.pickle
 flask-local.log
+bulk_jobs.sqlite3
+bulk_jobs.sqlite3-*
 __pycache__/
 .vendor/
 *.pyc

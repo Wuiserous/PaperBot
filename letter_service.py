@@ -103,12 +103,12 @@ def cleanup_files(*paths: str) -> None:
             os.remove(path)
 
 
-def build_letter_preview(letter_type: str, form_data: Dict[str, str]) -> Dict[str, object]:
+def build_letter_preview(letter_type: str, form_data: Dict[str, str], create_preview: bool = True) -> Dict[str, object]:
     data = _clean_form_data(form_data)
     _ensure_required_fields(letter_type, data)
 
     if letter_type == "ca_letter":
-        pdf_path, preview_path = pdf_generator.generate_campus_ambassador_pdf_with_preview(data["name"])
+        pdf_path, preview_path = pdf_generator.generate_campus_ambassador_pdf_with_preview(data["name"], create_preview=create_preview)
         recipient_data = {
             "name": data["name"],
             "email": data["email"],
@@ -126,6 +126,7 @@ def build_letter_preview(letter_type: str, form_data: Dict[str, str]) -> Dict[st
             name=student_data["name"],
             month=student_data["month"],
             domain=student_data["domain"],
+            create_preview=create_preview,
         )
         recipient_data = {
             "name": student_data["name"],
@@ -144,6 +145,7 @@ def build_letter_preview(letter_type: str, form_data: Dict[str, str]) -> Dict[st
         pdf_path, preview_path = pdf_generator.generate_offer_letter_pdf_with_preview(
             name=data["name"],
             training_from=data["training_from"],
+            create_preview=create_preview,
         )
         recipient_data = {
             "name": data["name"],
@@ -159,6 +161,7 @@ def build_letter_preview(letter_type: str, form_data: Dict[str, str]) -> Dict[st
             issue_date=data["date"],
             domain=data["domain"],
             identifier_id=data["cert_id"],
+            create_preview=create_preview,
         )
         recipient_data = {
             "name": data["name"],
@@ -172,6 +175,7 @@ def build_letter_preview(letter_type: str, form_data: Dict[str, str]) -> Dict[st
         pdf_path, preview_path = pdf_generator.ca_certificate(
             name=data["name"],
             issue_date=data["date"],
+            create_preview=create_preview,
         )
         recipient_data = {
             "name": data["name"],

@@ -36,7 +36,7 @@ def _create_preview_from_pdf(pdf_path: str) -> str:
 
 # --- UPDATED PDF GENERATION FUNCTIONS WITH PREVIEW ---
 
-def generate_campus_ambassador_pdf_with_preview(name: str) -> tuple[str, str]:
+def generate_campus_ambassador_pdf_with_preview(name: str, create_preview: bool = True) -> tuple[str, str]:
     """Generates the CA PDF and a preview image of the first page."""
     # Step 1: Generate the full PDF as before
     TEMPLATE_PATH = "templates/campus_ambassador.pdf"
@@ -58,11 +58,11 @@ def generate_campus_ambassador_pdf_with_preview(name: str) -> tuple[str, str]:
     output_doc.close()
 
     # Step 2: Create the preview from the generated PDF
-    preview_path = _create_preview_from_pdf(output_path)
+    preview_path = _create_preview_from_pdf(output_path) if create_preview else ""
     return output_path, preview_path
 
 
-def generate_internship_acceptance_pdf_with_preview(name: str, month: str, domain: str) -> tuple[str, str]:
+def generate_internship_acceptance_pdf_with_preview(name: str, month: str, domain: str, create_preview: bool = True) -> tuple[str, str]:
     """Generates the Internship PDF and a preview image."""
 
     # Step 1: Generate the full PDF
@@ -168,12 +168,12 @@ def generate_internship_acceptance_pdf_with_preview(name: str, month: str, domai
 
     # Step 2: Create the preview
     # Assuming _create_preview_from_pdf is defined elsewhere in your scope
-    preview_path = _create_preview_from_pdf(output_path)
+    preview_path = _create_preview_from_pdf(output_path) if create_preview else ""
     return output_path, preview_path
 
 # generate_internship_acceptance_pdf_with_preview('Aman', 'january', 'iot (internet of things)')
 
-def generate_offer_letter_pdf_with_preview(name: str, training_from: str) -> tuple[str, str]:
+def generate_offer_letter_pdf_with_preview(name: str, training_from: str, create_preview: bool = True) -> tuple[str, str]:
     """Generates the Offer Letter PDF and a preview image."""
     # Step 1: Generate the full PDF as before
     TEMPLATE_PATH = "templates/offer_letter.pdf"
@@ -209,11 +209,11 @@ def generate_offer_letter_pdf_with_preview(name: str, training_from: str) -> tup
     output_doc.close()
 
     # Step 2: Create the preview
-    preview_path = _create_preview_from_pdf(output_path)
+    preview_path = _create_preview_from_pdf(output_path) if create_preview else ""
     return output_path, preview_path
 
 
-def generate_completion_certificate(name: str, issue_date: str, domain: str, identifier_id: str) -> tuple[str, str]:
+def generate_completion_certificate(name: str, issue_date: str, domain: str, identifier_id: str, create_preview: bool = True) -> tuple[str, str]:
     """Generates the CA PDF (Landscape) with centered domain text and a QR Code."""
 
     TEMPLATE_PATH = "templates/completion_certificate.pdf"
@@ -292,10 +292,10 @@ def generate_completion_certificate(name: str, issue_date: str, domain: str, ide
     output_doc.close()
 
     # Step 2: Create the preview
-    preview_path = _create_preview_from_pdf(output_path)
+    preview_path = _create_preview_from_pdf(output_path) if create_preview else ""
     return output_path, preview_path
 
-def ca_certificate(name: str, issue_date: str) -> tuple[str, str]:
+def ca_certificate(name: str, issue_date: str, create_preview: bool = True) -> tuple[str, str]:
     """Generates the CA PDF (Landscape) with centered domain text and a QR Code."""
 
     TEMPLATE_PATH = "templates/ca_certificate.pdf"
@@ -352,6 +352,5 @@ Has successfully completed the Persevex Campus Representative Program from {issu
     output_doc.close()
 
     # Step 2: Create the preview
-    preview_path = _create_preview_from_pdf(output_path)
+    preview_path = _create_preview_from_pdf(output_path) if create_preview else ""
     return output_path, preview_path
-
