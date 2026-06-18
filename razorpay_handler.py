@@ -1,6 +1,8 @@
 import os
 import time
 
+import requests
+
 from config_loader import load_project_env
 
 
@@ -30,9 +32,6 @@ def create_payment_link(user_id: int):
             print(_last_error)
             return None
 
-        import razorpay
-
-        client = razorpay.Client(auth=(key_id, key_secret))
         amount_in_paise = 999 * 100
 
         link_data = {
@@ -50,7 +49,14 @@ def create_payment_link(user_id: int):
             "reminder_enable": False,
             "expire_by": int(time.time()) + 86400,
         }
-        payment_link = client.payment_link.create(link_data)
+        response = requests.post(
+            "https://api.razorpay.com/v1/payment_links",
+            auth=(key_id, key_secret),
+            json=link_data,
+            timeout=20,
+        )
+        response.raise_for_status()
+        payment_link = response.json()
         short_url = payment_link.get("short_url")
         if not short_url:
             _last_error = "Razorpay did not return a payment URL."
@@ -59,6 +65,11 @@ def create_payment_link(user_id: int):
 
         return short_url
 
+    except requests.HTTPError as e:
+        response_text = e.response.text[:300] if e.response is not None else str(e)
+        _last_error = f"Razorpay rejected the payment link request: {response_text}"
+        print(_last_error)
+        return None
     except Exception as e:
         _last_error = f"Razorpay could not create the payment link: {e}"
         print(_last_error)
