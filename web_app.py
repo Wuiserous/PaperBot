@@ -12,7 +12,8 @@ from config_loader import load_project_env
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 load_project_env(BASE_DIR)
 
-SECRET = os.getenv("FLASK_SECRET_KEY", os.getenv("WEB_APP_PASSWORD", "change-me"))
+DEFAULT_WEB_PASSWORD = "MySuperSecretPassword123"
+SECRET = os.getenv("FLASK_SECRET_KEY", os.getenv("WEB_APP_PASSWORD", DEFAULT_WEB_PASSWORD))
 WEB_APP_PASSWORD = os.getenv("WEB_APP_PASSWORD", SECRET)
 
 app = Flask(__name__, template_folder="web_templates")
