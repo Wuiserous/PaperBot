@@ -4,7 +4,7 @@ import os
 import json
 import requests
 import tempfile
-from datetime import datetime
+from datetime import date, datetime
 from config_loader import load_project_env
 
 load_project_env()
@@ -13,6 +13,7 @@ load_project_env()
 SCRIPT_URL = os.getenv('GOOGLE_SCRIPT_URL')
 # The local JSON file for caching user statuses
 CACHE_FILE = os.path.join(tempfile.gettempdir(), 'user_status_cache.json') if os.getenv("VERCEL") else 'user_status_cache.json'
+SUBSCRIPTION_EXPIRY_DAY = 8
 
 
 def _load_cache():
@@ -123,6 +124,17 @@ def register_new_user(user_id: int, username: str):
     return _fetch_from_sheet(params)
 
 
+def get_next_subscription_expiry(today: date | None = None) -> str:
+    """Returns the fixed monthly expiry date used by the payment flow."""
+    today = today or date.today()
+    year = today.year
+    month = today.month + 1
+    if month == 13:
+        month = 1
+        year += 1
+    return date(year, month, SUBSCRIPTION_EXPIRY_DAY).strftime("%Y-%m-%d")
+
+
 def log_activity(letter_type: str, recipient_name: str, recipient_email: str, sent_by: str, status: str):
     """Logs an activity via the web app. This is a 'fire-and-forget' action."""
     params = {
@@ -142,7 +154,11 @@ def update_user_subscription(user_id: int):
     Updates a user's subscription in the Google Sheet and clears the local cache for that user.
     This should be called by your Razorpay webhook handler.
     """
-    params = {'action': 'updateSubscription', 'user_id': user_id}
+    params = {
+        'action': 'updateSubscription',
+        'user_id': user_id,
+        'expiry_date': get_next_subscription_expiry(),
+    }
     response = _fetch_from_sheet(params)
     if response.get("status") == "success":
         # Important: Clear the old cached data to force a refresh on the next check

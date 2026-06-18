@@ -1,4 +1,5 @@
 import hashlib
+import logging
 import os
 import random
 import time
@@ -84,7 +85,11 @@ def current_subscription_status() -> dict:
     user = current_web_user()
     if not user:
         return {"status": "not_logged_in"}
-    return database_handler.get_user_status(user["id"])
+    try:
+        return database_handler.get_user_status(user["id"])
+    except Exception as exc:
+        logging.exception("Failed to check web subscription status")
+        return {"status": "error", "message": str(exc)}
 
 
 def require_login(route_func):
@@ -113,12 +118,23 @@ def require_active_subscription(route_func):
 
 
 def build_payment_context() -> dict:
-    import razorpay_handler
-
     user = current_web_user()
     status = current_subscription_status()
-    payment_url = razorpay_handler.create_payment_link(user["id"]) if user else None
-    return {"user": user, "status": status, "payment_url": payment_url}
+    payment_url = None
+    payment_error = None
+
+    if user:
+        try:
+            import razorpay_handler
+
+            payment_url = razorpay_handler.create_payment_link(user["id"])
+            if not payment_url:
+                payment_error = "Payment link is not available right now."
+        except Exception as exc:
+            logging.exception("Failed to create web payment link")
+            payment_error = "Payment link is not available right now."
+
+    return {"user": user, "status": status, "payment_url": payment_url, "payment_error": payment_error}
 
 
 def register_auth_routes(app):
@@ -158,7 +174,11 @@ def register_auth_routes(app):
         if len(otp) != 6:
             return jsonify({"ok": False, "error": "Enter 6 digits."}), 400
 
-        result = complete_login(otp)
+        try:
+            result = complete_login(otp)
+        except Exception:
+            app.logger.exception("Failed to verify web OTP")
+            return jsonify({"ok": False, "error": "Could not complete login. Try again."}), 500
         if not result.get("ok"):
             return jsonify(result), 400
 
@@ -178,8 +198,13 @@ def register_auth_routes(app):
     @require_login
     def web_check_payment():
         user = current_web_user()
-        database_handler.clear_user_cache(user["id"])
-        status = database_handler.get_user_status(user["id"])
+        try:
+            database_handler.clear_user_cache(user["id"])
+            status = database_handler.get_user_status(user["id"])
+        except Exception:
+            app.logger.exception("Failed to refresh web payment status")
+            return jsonify({"ok": False, "error": "Could not check payment status right now."}), 500
+
         if status.get("status") == "active":
             return jsonify({"ok": True, "redirect": url_for("web_dashboard")})
         return jsonify({"ok": False, "error": "Payment not active yet."}), 400

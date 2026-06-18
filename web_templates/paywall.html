@@ -67,15 +67,25 @@
             background: var(--soft);
             color: var(--accent-dark);
         }
+        .message.visible { display: block; }
+        button:disabled {
+            cursor: not-allowed;
+            opacity: 0.65;
+        }
     </style>
 </head>
 <body>
     <main class="card">
         <h1>Subscription required</h1>
         <p>30 days access for Rs. 999.</p>
+        {% if payment_error %}
+            <div class="message visible">{{ payment_error }}</div>
+        {% endif %}
         <div class="actions">
             {% if payment_url %}
                 <a class="primary" href="{{ payment_url }}">Pay Rs. 999</a>
+            {% else %}
+                <button class="primary" type="button" disabled>Payment unavailable</button>
             {% endif %}
             <button class="secondary" id="checkButton" type="button">Check Status</button>
             <a class="secondary" href="{{ url_for('web_logout') }}">Logout</a>

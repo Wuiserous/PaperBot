@@ -3,6 +3,7 @@ import os
 import time
 import razorpay
 from config_loader import load_project_env
+import database_handler
 
 load_project_env()
 
@@ -21,14 +22,18 @@ def create_payment_link(user_id: int):
         # The amount is now hardcoded to ₹999
         amount_in_paise = 999 * 100
 
+        expiry_date = database_handler.get_next_subscription_expiry()
+
         link_data = {
             "amount": amount_in_paise,
             "currency": "INR",
             "accept_partial": False,
-            "description": "30-Day Access to Telegram Bot",
+            "description": f"PaperBot access until {expiry_date}",
             "notes": {
                 # This is the most important part for tracking the user
-                "telegram_user_id": str(user_id)
+                "telegram_user_id": str(user_id),
+                "expiry_date": expiry_date,
+                "billing_cycle_day": "8",
             },
             "notify": {
                 "sms": False,
