@@ -13,11 +13,10 @@
     <meta name="apple-mobile-web-app-title" content="PaperBot">
     <style>
         :root {
-            --bg: #f4efe8;
-            --bg-deep: #ece2d4;
-            --panel: rgba(255, 255, 255, 0.84);
-            --panel-strong: rgba(255, 255, 255, 0.94);
-            --panel-dark: #18191d;
+            --bg: #f5efe8;
+            --bg-deep: #ebe0d2;
+            --panel: rgba(255, 255, 255, 0.86);
+            --panel-strong: rgba(255, 255, 255, 0.95);
             --text: #191714;
             --muted: #6f655d;
             --line: rgba(69, 52, 39, 0.10);
@@ -27,13 +26,8 @@
             --accent-soft: rgba(184, 106, 67, 0.10);
             --success: #1d6b49;
             --success-soft: rgba(29, 107, 73, 0.10);
-            --danger-soft: rgba(184, 106, 67, 0.12);
-            --shadow-lg: 0 32px 80px rgba(40, 25, 16, 0.12);
-            --shadow-md: 0 18px 44px rgba(40, 25, 16, 0.10);
-            --radius-xl: 28px;
-            --radius-lg: 22px;
-            --radius-md: 16px;
-            --radius-sm: 12px;
+            --shadow-lg: 0 24px 60px rgba(40, 25, 16, 0.12);
+            --shadow-md: 0 16px 36px rgba(40, 25, 16, 0.10);
         }
 
         * { box-sizing: border-box; }
@@ -44,9 +38,8 @@
             font-family: Georgia, "Times New Roman", serif;
             color: var(--text);
             background:
-                radial-gradient(circle at top left, rgba(184, 106, 67, 0.12), transparent 24%),
-                radial-gradient(circle at top right, rgba(20, 21, 24, 0.08), transparent 28%),
-                linear-gradient(180deg, #f9f4ed 0%, var(--bg) 58%, var(--bg-deep) 100%);
+                radial-gradient(circle at top left, rgba(184, 106, 67, 0.10), transparent 22%),
+                linear-gradient(180deg, #f9f4ed 0%, var(--bg) 56%, var(--bg-deep) 100%);
         }
 
         img {
@@ -60,58 +53,40 @@
         }
 
         .shell {
-            width: min(1280px, calc(100% - 24px));
+            width: min(1200px, calc(100% - 24px));
             margin: 0 auto;
-            padding: 18px 0 28px;
+            padding: 16px 0 24px;
         }
 
         .topbar {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 16px;
-            margin-bottom: 18px;
+            gap: 14px;
+            margin-bottom: 14px;
         }
 
         .brand {
             display: flex;
             align-items: center;
-            gap: 14px;
+            gap: 12px;
             min-width: 0;
         }
 
         .brand-mark {
-            width: 58px;
-            height: 58px;
-            padding: 6px;
-            border-radius: 18px;
+            width: 48px;
+            height: 48px;
+            padding: 5px;
+            border-radius: 16px;
             background: rgba(24, 25, 29, 0.96);
-            box-shadow: 0 16px 36px rgba(24, 25, 29, 0.22);
+            box-shadow: 0 12px 28px rgba(24, 25, 29, 0.18);
             flex: 0 0 auto;
-        }
-
-        .brand-copy {
-            min-width: 0;
-        }
-
-        .eyebrow {
-            margin: 0 0 4px;
-            font-size: 0.78rem;
-            letter-spacing: 0.14em;
-            text-transform: uppercase;
-            color: var(--muted);
         }
 
         .brand-title {
             margin: 0;
-            font-size: clamp(1.5rem, 2vw, 2rem);
+            font-size: 1.6rem;
             line-height: 1;
-        }
-
-        .brand-subtitle {
-            margin: 6px 0 0;
-            color: var(--muted);
-            font-size: 0.98rem;
         }
 
         .profile-wrap {
@@ -120,84 +95,36 @@
         }
 
         .profile-button {
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            padding: 8px 10px 8px 8px;
+            width: 42px;
+            height: 42px;
             border: 1px solid var(--line);
-            border-radius: 999px;
-            background: var(--panel-strong);
-            box-shadow: var(--shadow-md);
-            cursor: pointer;
-        }
-
-        .profile-avatar {
-            width: 38px;
-            height: 38px;
             border-radius: 999px;
             background: linear-gradient(135deg, var(--accent), var(--accent-deep));
             color: #fff;
             display: grid;
             place-items: center;
-            font-size: 0.96rem;
+            box-shadow: var(--shadow-md);
+            cursor: pointer;
             font-weight: 700;
-        }
-
-        .profile-meta {
-            display: grid;
-            gap: 1px;
-            text-align: left;
-        }
-
-        .profile-name {
-            font-size: 0.94rem;
-            font-weight: 700;
-        }
-
-        .profile-label {
-            color: var(--muted);
-            font-size: 0.8rem;
-        }
-
-        .profile-chevron {
-            color: var(--muted);
-            font-size: 0.9rem;
         }
 
         .profile-menu {
             position: absolute;
             top: calc(100% + 10px);
             right: 0;
-            width: min(280px, calc(100vw - 32px));
-            padding: 12px;
-            border-radius: 18px;
+            width: 170px;
+            padding: 8px;
+            border-radius: 16px;
             border: 1px solid var(--line);
-            background: rgba(255, 255, 255, 0.97);
+            background: var(--panel-strong);
             box-shadow: var(--shadow-lg);
             display: none;
             z-index: 20;
         }
 
         .profile-wrap.open .profile-menu {
-            display: block;
-        }
-
-        .profile-menu-head {
-            padding: 6px 6px 10px;
-            border-bottom: 1px solid var(--line);
-            margin-bottom: 10px;
-        }
-
-        .profile-menu-head strong,
-        .profile-menu-head span {
-            display: block;
-        }
-
-        .profile-menu-head span {
-            color: var(--muted);
-            font-size: 0.86rem;
-            margin-top: 4px;
-            word-break: break-word;
+            display: grid;
+            gap: 4px;
         }
 
         .menu-action,
@@ -209,8 +136,8 @@
             text-decoration: none;
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            padding: 11px 10px;
+            justify-content: flex-start;
+            padding: 10px 12px;
             border-radius: 12px;
             cursor: pointer;
         }
@@ -220,135 +147,43 @@
             background: rgba(24, 25, 29, 0.05);
         }
 
-        .menu-note {
-            display: block;
-            color: var(--muted);
-            font-size: 0.8rem;
-            margin-top: 4px;
-        }
-
-        .hero {
-            padding: 22px 24px;
-            border-radius: var(--radius-xl);
-            background:
-                linear-gradient(135deg, rgba(24, 25, 29, 0.96), rgba(31, 33, 39, 0.92)),
-                linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0));
-            color: #f8f2eb;
-            box-shadow: var(--shadow-lg);
-            margin-bottom: 16px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .hero::after {
-            content: "";
-            position: absolute;
-            inset: auto -8% -42% auto;
-            width: 340px;
-            height: 340px;
-            background: radial-gradient(circle, rgba(184, 106, 67, 0.30), transparent 70%);
-            pointer-events: none;
-        }
-
-        .hero-grid {
-            position: relative;
-            z-index: 1;
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) auto;
-            gap: 18px;
-            align-items: end;
-        }
-
-        .hero h2 {
-            margin: 0;
-            font-size: clamp(1.8rem, 2.8vw, 2.6rem);
-            line-height: 1.04;
-            max-width: 700px;
-        }
-
-        .hero p {
-            margin: 10px 0 0;
-            max-width: 700px;
-            color: rgba(248, 242, 235, 0.76);
-            font-size: 1rem;
-        }
-
-        .hero-pills {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-top: 16px;
-        }
-
-        .hero-pill {
-            padding: 9px 12px;
-            border-radius: 999px;
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.10);
-            color: rgba(248, 242, 235, 0.88);
-            font-size: 0.88rem;
-        }
-
-        .hero-status {
-            min-width: 220px;
-            padding: 16px 18px;
-            border-radius: 20px;
-            background: rgba(255, 255, 255, 0.06);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            backdrop-filter: blur(12px);
-        }
-
-        .hero-status span {
-            display: block;
-            color: rgba(248, 242, 235, 0.62);
-            font-size: 0.8rem;
-            text-transform: uppercase;
-            letter-spacing: 0.12em;
-            margin-bottom: 6px;
-        }
-
-        .hero-status strong {
-            display: block;
-            font-size: 1.06rem;
-            line-height: 1.3;
-        }
-
         .layout {
             display: grid;
-            grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
-            gap: 16px;
+            grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+            gap: 14px;
             align-items: start;
         }
 
         .card {
             border: 1px solid var(--line);
-            border-radius: var(--radius-xl);
+            border-radius: 24px;
             background: var(--panel);
             box-shadow: var(--shadow-md);
             backdrop-filter: blur(14px);
         }
 
-        .composer-card {
-            padding: 20px;
+        .composer-card,
+        .preview-card {
+            padding: 18px;
         }
 
         .stack {
             display: grid;
-            gap: 14px;
+            gap: 12px;
         }
 
         .flash-stack {
             display: grid;
-            gap: 10px;
+            gap: 8px;
         }
 
         .flash {
-            padding: 12px 14px;
-            border-radius: 16px;
+            padding: 11px 13px;
+            border-radius: 14px;
             border: 1px solid rgba(184, 106, 67, 0.18);
             background: var(--accent-soft);
             color: var(--accent-deep);
-            font-size: 0.94rem;
+            font-size: 0.92rem;
         }
 
         .flash.success {
@@ -360,45 +195,39 @@
         .section-head {
             display: flex;
             justify-content: space-between;
-            align-items: flex-start;
-            gap: 16px;
+            align-items: center;
+            gap: 12px;
         }
 
+        .section-head h2,
         .section-head h3 {
-            margin: 0 0 4px;
-            font-size: 1.18rem;
-        }
-
-        .section-head p {
             margin: 0;
-            color: var(--muted);
-            font-size: 0.93rem;
+            font-size: 1.08rem;
         }
 
         .mode-tabs {
             display: inline-grid;
             grid-template-columns: repeat(2, 1fr);
             gap: 6px;
-            padding: 6px;
+            padding: 4px;
             border-radius: 999px;
             background: rgba(24, 25, 29, 0.05);
             border: 1px solid var(--line);
         }
 
         .mode-tab {
-            padding: 10px 16px;
+            padding: 8px 14px;
             border: 0;
             border-radius: 999px;
             background: transparent;
             color: var(--muted);
             cursor: pointer;
-            transition: 160ms ease;
         }
 
         .mode-tab.active {
             background: #fff;
             color: var(--text);
-            box-shadow: 0 8px 18px rgba(24, 25, 29, 0.08);
+            box-shadow: 0 6px 14px rgba(24, 25, 29, 0.08);
         }
 
         .mode-panel {
@@ -412,7 +241,7 @@
         .type-grid {
             display: grid;
             grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 10px;
+            gap: 8px;
         }
 
         .type-option {
@@ -427,83 +256,36 @@
         }
 
         .type-card {
-            height: 100%;
-            padding: 14px;
-            border-radius: 20px;
+            padding: 12px;
+            border-radius: 16px;
             border: 1px solid var(--line);
-            background: rgba(255, 255, 255, 0.62);
-            transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
-        }
-
-        .type-grid .type-option:last-child:nth-child(odd) {
-            grid-column: span 2;
-        }
-
-        .type-card strong,
-        .type-card span {
-            display: block;
+            background: rgba(255, 255, 255, 0.66);
+            text-align: center;
+            transition: border-color 140ms ease, background 140ms ease, box-shadow 140ms ease;
         }
 
         .type-card strong {
-            font-size: 0.97rem;
-            margin-bottom: 6px;
-        }
-
-        .type-card span {
-            color: var(--muted);
-            font-size: 0.84rem;
-            line-height: 1.45;
+            display: block;
+            font-size: 0.93rem;
+            line-height: 1.25;
         }
 
         .type-option input:checked + .type-card {
             background: rgba(255, 255, 255, 0.96);
             border-color: rgba(184, 106, 67, 0.42);
-            box-shadow: 0 16px 28px rgba(184, 106, 67, 0.10);
-            transform: translateY(-1px);
+            box-shadow: 0 10px 20px rgba(184, 106, 67, 0.08);
         }
 
         .field-group {
             display: none;
-            padding: 18px;
-            border-radius: 24px;
+            padding: 16px;
+            border-radius: 20px;
             border: 1px solid var(--line);
-            background: rgba(255, 255, 255, 0.72);
+            background: rgba(255, 255, 255, 0.74);
         }
 
         .field-group.active {
             display: block;
-        }
-
-        .flow-head {
-            display: grid;
-            gap: 10px;
-            margin-bottom: 14px;
-        }
-
-        .flow-head h4 {
-            margin: 0;
-            font-size: 1.1rem;
-        }
-
-        .flow-head p {
-            margin: 0;
-            color: var(--muted);
-            font-size: 0.92rem;
-            line-height: 1.5;
-        }
-
-        .flow-meta {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-
-        .flow-badge {
-            padding: 8px 10px;
-            border-radius: 999px;
-            background: rgba(24, 25, 29, 0.05);
-            color: var(--muted);
-            font-size: 0.82rem;
         }
 
         .field-grid {
@@ -521,14 +303,14 @@
             font-size: 0.9rem;
         }
 
-        .field input {
+        .field input,
+        input[type="file"] {
             width: 100%;
             padding: 13px 14px;
             border-radius: 14px;
             border: 1px solid var(--line);
             background: rgba(255, 255, 255, 0.95);
             color: var(--text);
-            transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
         }
 
         .field input:focus {
@@ -536,14 +318,6 @@
             border-color: rgba(184, 106, 67, 0.42);
             box-shadow: 0 0 0 4px rgba(184, 106, 67, 0.10);
             background: #fff;
-        }
-
-        input[type="file"] {
-            width: 100%;
-            padding: 14px;
-            border-radius: 16px;
-            border: 1px dashed var(--line-strong);
-            background: rgba(255, 255, 255, 0.8);
         }
 
         .actions {
@@ -562,7 +336,6 @@
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            transition: transform 140ms ease, opacity 140ms ease, background 140ms ease;
         }
 
         button:disabled,
@@ -583,34 +356,16 @@
             border: 1px solid var(--line);
         }
 
-        .cta-row {
-            margin-top: 14px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-
-        .cta-hint {
-            color: var(--muted);
-            font-size: 0.88rem;
-        }
-
-        .bulk-helper {
-            display: grid;
-            gap: 10px;
-        }
-
-        .format-line {
+        .format-line,
+        .send-note,
+        .preview-empty {
             padding: 12px 14px;
             border-radius: 16px;
             border: 1px dashed var(--line-strong);
-            background: rgba(255, 255, 255, 0.68);
+            background: rgba(255, 255, 255, 0.62);
             color: var(--muted);
-            overflow-x: auto;
-            white-space: nowrap;
             font-size: 0.9rem;
+            line-height: 1.5;
         }
 
         .hidden-format {
@@ -619,7 +374,7 @@
 
         .bulk-status {
             display: none;
-            margin-top: 14px;
+            margin-top: 12px;
             padding: 14px;
             border-radius: 18px;
             border: 1px solid var(--line);
@@ -662,107 +417,40 @@
 
         .preview-card {
             position: sticky;
-            top: 20px;
-            padding: 18px;
-        }
-
-        .preview-empty {
-            min-height: 100%;
-            padding: 20px;
-            border-radius: 24px;
-            border: 1px dashed var(--line-strong);
-            background: rgba(255, 255, 255, 0.56);
-            display: grid;
-            gap: 18px;
-            align-content: start;
-        }
-
-        .empty-mark {
-            width: 58px;
-            height: 58px;
-            padding: 6px;
-            border-radius: 18px;
-            background: rgba(24, 25, 29, 0.96);
-            box-shadow: 0 14px 28px rgba(24, 25, 29, 0.16);
-        }
-
-        .preview-empty h3,
-        .preview-pane h3 {
-            margin: 0;
-            font-size: 1.18rem;
-        }
-
-        .preview-empty p,
-        .preview-pane p {
-            margin: 0;
-            color: var(--muted);
-            line-height: 1.55;
-            font-size: 0.94rem;
-        }
-
-        .steps {
-            display: grid;
-            gap: 12px;
-        }
-
-        .step {
-            display: grid;
-            grid-template-columns: auto 1fr;
-            gap: 12px;
-            align-items: start;
-        }
-
-        .step-index {
-            width: 28px;
-            height: 28px;
-            border-radius: 999px;
-            background: rgba(24, 25, 29, 0.08);
-            display: grid;
-            place-items: center;
-            font-size: 0.85rem;
-            color: var(--muted);
-        }
-
-        .step-copy strong,
-        .step-copy span {
-            display: block;
-        }
-
-        .step-copy span {
-            color: var(--muted);
-            font-size: 0.88rem;
-            margin-top: 2px;
+            top: 18px;
         }
 
         .preview-pane {
             display: grid;
-            gap: 14px;
+            gap: 12px;
         }
 
         .preview-status {
-            padding: 14px;
-            border-radius: 18px;
+            padding: 12px 14px;
+            border-radius: 16px;
             border: 1px solid rgba(29, 107, 73, 0.16);
             background: var(--success-soft);
             color: var(--success);
+            font-size: 0.92rem;
+            line-height: 1.45;
         }
 
         .preview-status.mismatch {
             border-color: rgba(184, 106, 67, 0.18);
-            background: var(--danger-soft);
+            background: var(--accent-soft);
             color: var(--accent-deep);
         }
 
         .preview-frame {
             overflow: hidden;
-            border-radius: 20px;
+            border-radius: 18px;
             border: 1px solid var(--line);
             background: #fff;
         }
 
         .summary {
-            padding: 14px;
-            border-radius: 20px;
+            padding: 12px 14px;
+            border-radius: 18px;
             border: 1px solid var(--line);
             background: rgba(255, 255, 255, 0.72);
             display: grid;
@@ -779,52 +467,24 @@
             color: var(--muted);
         }
 
-        .send-actions {
-            display: grid;
-            gap: 10px;
-        }
-
-        .send-note {
-            padding: 12px 14px;
-            border-radius: 16px;
-            background: rgba(24, 25, 29, 0.05);
-            color: var(--muted);
-            font-size: 0.9rem;
-        }
-
-        @media (max-width: 1120px) {
-            .type-grid {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-
-            .type-grid .type-option:last-child:nth-child(odd) {
-                grid-column: auto;
-            }
-        }
-
-        @media (max-width: 1024px) {
-            .layout,
-            .hero-grid {
+        @media (max-width: 1040px) {
+            .layout {
                 grid-template-columns: 1fr;
             }
 
             .preview-card {
                 position: static;
             }
+
+            .type-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
         }
 
         @media (max-width: 720px) {
             .shell {
                 width: min(100%, calc(100% - 16px));
-                padding-top: 14px;
-            }
-
-            .topbar {
-                align-items: flex-start;
-            }
-
-            .profile-meta {
-                display: none;
+                padding-top: 12px;
             }
 
             .type-grid,
@@ -832,21 +492,22 @@
                 grid-template-columns: 1fr;
             }
 
-            .mode-tabs {
-                width: 100%;
+            .section-head,
+            .summary-row,
+            .bulk-meta,
+            .topbar {
+                flex-direction: column;
+                align-items: stretch;
             }
 
+            .mode-tabs,
             .mode-tab,
             .actions > * {
                 width: 100%;
             }
 
-            .cta-row,
-            .section-head,
-            .summary-row,
-            .bulk-meta {
-                flex-direction: column;
-                align-items: stretch;
+            .profile-wrap {
+                align-self: flex-end;
             }
         }
     </style>
@@ -856,69 +517,19 @@
         <header class="topbar">
             <div class="brand">
                 <img class="brand-mark" src="{{ url_for('static', filename='icons/icon-192.png') }}" alt="PaperBot icon">
-                <div class="brand-copy">
-                    <p class="eyebrow">PaperBot Workspace</p>
-                    <h1 class="brand-title">PaperBot</h1>
-                    <p class="brand-subtitle">Fast, polished document delivery without the clutter.</p>
-                </div>
+                <h1 class="brand-title">PaperBot</h1>
             </div>
 
             <div class="profile-wrap" id="profileWrap">
-                <button class="profile-button" type="button" id="profileButton" aria-haspopup="true" aria-expanded="false">
-                    <span class="profile-avatar">{{ user_first_name[:1]|upper }}</span>
-                    <span class="profile-meta">
-                        <span class="profile-name">{{ user_first_name }}</span>
-                        <span class="profile-label">Account</span>
-                    </span>
-                    <span class="profile-chevron">▾</span>
-                </button>
-
-                <div class="profile-menu" id="profileMenu">
-                    <div class="profile-menu-head">
-                        <strong>{{ user.get('name', 'PaperBot User') }}</strong>
-                        <span>{{ user.get('email', '') }}</span>
-                    </div>
+                <button class="profile-button" type="button" id="profileButton" aria-haspopup="true" aria-expanded="false">{{ user.get('name', 'P')[:1]|upper }}</button>
+                <div class="profile-menu">
                     <form method="post" action="{{ url_for('web_clear_draft') }}">
-                        <button class="menu-action" type="submit" name="clear_scope" value="all">
-                            <span>
-                                Start fresh
-                                <span class="menu-note">Clear the current draft and visible form values.</span>
-                            </span>
-                            <span>↺</span>
-                        </button>
+                        <button class="menu-action" type="submit" name="clear_scope" value="all">Reset</button>
                     </form>
-                    <a class="menu-link" href="{{ url_for('web_logout') }}">
-                        <span>
-                            Log out
-                            <span class="menu-note">Sign out of this device.</span>
-                        </span>
-                        <span>→</span>
-                    </a>
+                    <a class="menu-link" href="{{ url_for('web_logout') }}">Logout</a>
                 </div>
             </div>
         </header>
-
-        <section class="hero">
-            <div class="hero-grid">
-                <div>
-                    <h2>Hi {{ user_first_name }}, send the right document with less friction.</h2>
-                    <p>Choose a document type, complete only the fields that matter, preview once, then send with confidence. Everything here is tuned to keep the next step obvious.</p>
-                    <div class="hero-pills">
-                        <span class="hero-pill">Preview-first workflow</span>
-                        <span class="hero-pill">Single and bulk sending</span>
-                        <span class="hero-pill">Safer staged sends</span>
-                    </div>
-                </div>
-                <div class="hero-status">
-                    <span>Current focus</span>
-                    {% if draft %}
-                        <strong>{{ draft_label }} is staged and ready for review.</strong>
-                    {% else %}
-                        <strong>{{ schema[selected_type].short_label }} is selected. Generate a preview when ready.</strong>
-                    {% endif %}
-                </div>
-            </div>
-        </section>
 
         <div class="layout">
             <section class="card composer-card">
@@ -934,10 +545,7 @@
                     {% endwith %}
 
                     <div class="section-head">
-                        <div>
-                            <h3>Compose</h3>
-                            <p>Pick the document you want to send, then fill only that workflow.</p>
-                        </div>
+                        <h2>Create</h2>
                         <div class="mode-tabs">
                             <button class="mode-tab active" type="button" data-mode-button="single">Single</button>
                             <button class="mode-tab" type="button" data-mode-button="bulk">Bulk</button>
@@ -952,7 +560,6 @@
                                     <input type="radio" name="letter_type" value="{{ type_key }}" {% if selected_type == type_key %}checked{% endif %}>
                                     <div class="type-card">
                                         <strong>{{ config.short_label }}</strong>
-                                        <span>{{ config.description }}</span>
                                     </div>
                                 </label>
                             {% endfor %}
@@ -962,17 +569,6 @@
                             {% for type_key, config in schema.items() %}
                                 {% set field_count = config.fields|length %}
                                 <div class="field-group {% if selected_type == type_key %}active{% endif %}" data-letter-group="{{ type_key }}">
-                                    <div class="flow-head">
-                                        <div>
-                                            <h4>{{ config.label }}</h4>
-                                            <p>{{ config.helper_text }}</p>
-                                        </div>
-                                        <div class="flow-meta">
-                                            <span class="flow-badge">Sent from {{ config.sender_label }}</span>
-                                            <span class="flow-badge">{{ config.fields|length }} field{% if config.fields|length != 1 %}s{% endif %}</span>
-                                        </div>
-                                    </div>
-
                                     <div class="field-grid {% if field_count > 1 %}two-col{% endif %}">
                                         {% for field in config.fields %}
                                             <div class="field">
@@ -992,51 +588,36 @@
                                 </div>
                             {% endfor %}
 
-                            <div class="cta-row">
-                                <span class="cta-hint">Preview before send so the final document always matches what you reviewed.</span>
-                                <div class="actions">
-                                    <button class="primary" type="submit" id="previewButton">Generate Preview</button>
-                                    <button class="secondary" type="submit" formaction="{{ url_for('web_clear_draft') }}" name="clear_scope" value="all">Clear Form</button>
-                                </div>
+                            <div class="actions">
+                                <button class="primary" type="submit" id="previewButton">Generate Preview</button>
+                                <button class="secondary" type="submit" formaction="{{ url_for('web_clear_draft') }}" name="clear_scope" value="all">Clear</button>
                             </div>
                         </div>
                     </form>
 
                     <form class="mode-panel" data-mode-panel="bulk" id="bulkForm" enctype="multipart/form-data">
-                        <div class="stack">
-                            <div class="bulk-helper">
-                                <div class="section-head">
-                                    <div>
-                                        <h3>Bulk upload</h3>
-                                        <p>Upload a CSV matching the selected document type. We will process and track progress here.</p>
-                                    </div>
-                                </div>
+                        <input type="hidden" name="letter_type" id="bulkLetterType" value="{{ selected_type }}">
+                        {% for type_key, header_format in bulk_header_formats.items() %}
+                            <div class="format-line {% if selected_type != type_key %}hidden-format{% endif %}" data-format-line="{{ type_key }}">{{ header_format }}</div>
+                        {% endfor %}
+                        <input type="file" name="csv_file" accept=".csv,text/csv" required>
+                        <div class="actions">
+                            <button class="primary" type="submit">Start Bulk</button>
+                        </div>
 
-                                <input type="hidden" name="letter_type" id="bulkLetterType" value="{{ selected_type }}">
-                                {% for type_key, header_format in bulk_header_formats.items() %}
-                                    <div class="format-line {% if selected_type != type_key %}hidden-format{% endif %}" data-format-line="{{ type_key }}">{{ header_format }}</div>
-                                {% endfor %}
-                                <input type="file" name="csv_file" accept=".csv,text/csv" required>
+                        <div class="bulk-status" id="bulkStatus">
+                            <div class="bulk-meta">
+                                <strong id="bulkState">Queued</strong>
+                                <span id="bulkCount">0/0</span>
                             </div>
-
-                            <div class="actions">
-                                <button class="primary" type="submit">Start Bulk Send</button>
+                            <div class="progress-track"><div class="progress-fill" id="bulkProgress"></div></div>
+                            <div class="bulk-meta">
+                                <span id="bulkSent">Sent 0</span>
+                                <span id="bulkFailed">Failed 0</span>
                             </div>
-
-                            <div class="bulk-status" id="bulkStatus">
-                                <div class="bulk-meta">
-                                    <strong id="bulkState">Queued</strong>
-                                    <span id="bulkCount">0/0</span>
-                                </div>
-                                <div class="progress-track"><div class="progress-fill" id="bulkProgress"></div></div>
-                                <div class="bulk-meta">
-                                    <span id="bulkSent">Sent 0</span>
-                                    <span id="bulkFailed">Failed 0</span>
-                                </div>
-                                <div class="bulk-error" id="bulkError"></div>
-                                <div class="actions" id="bulkExportWrap" style="display: none;">
-                                    <a class="button secondary" id="bulkExportLink" href="#">Export Failed CSV</a>
-                                </div>
+                            <div class="bulk-error" id="bulkError"></div>
+                            <div class="actions" id="bulkExportWrap" style="display: none;">
+                                <a class="button secondary" id="bulkExportLink" href="#">Export Failed CSV</a>
                             </div>
                         </div>
                     </form>
@@ -1047,11 +628,10 @@
                 {% if draft %}
                     <div class="preview-pane">
                         <div class="preview-status {% if not draft_matches_selected %}mismatch{% endif %}">
-                            <strong>Preview ready for {{ draft_label }}</strong>
                             {% if draft_matches_selected %}
-                                <div>This staged preview is exactly what will be sent when you confirm.</div>
+                                Ready to send.
                             {% else %}
-                                <div>You are editing {{ schema[selected_type].short_label }}, but the staged preview is still {{ draft_label }}. Generate a new preview to replace it.</div>
+                                Preview is still {{ draft_label }}. Generate a new one to replace it.
                             {% endif %}
                         </div>
 
@@ -1097,45 +677,14 @@
                             {% endif %}
                         </div>
 
-                        <form method="post" action="{{ url_for('web_send') }}" id="sendForm" class="send-actions">
+                        <form method="post" action="{{ url_for('web_send') }}" id="sendForm" class="actions">
                             <input type="hidden" name="draft_id" value="{{ draft.id }}">
-                            <button class="primary" type="submit" id="sendButton">Send This Preview</button>
-                            <button class="secondary" type="submit" formaction="{{ url_for('web_clear_draft') }}" name="clear_scope" value="preview_only">Discard Preview</button>
+                            <button class="primary" type="submit" id="sendButton">Send</button>
+                            <button class="secondary" type="submit" formaction="{{ url_for('web_clear_draft') }}" name="clear_scope" value="preview_only">Discard</button>
                         </form>
-
-                        <div class="send-note">PaperBot keeps sending separate from editing so you always know which preview is live.</div>
                     </div>
                 {% else %}
-                    <div class="preview-empty">
-                        <img class="empty-mark" src="{{ url_for('static', filename='icons/icon-192.png') }}" alt="PaperBot icon">
-                        <div>
-                            <h3>Nothing staged yet</h3>
-                            <p>Your preview will appear here once you generate it. Until then, focus on picking the right document and filling the active form.</p>
-                        </div>
-                        <div class="steps">
-                            <div class="step">
-                                <div class="step-index">1</div>
-                                <div class="step-copy">
-                                    <strong>Choose the document type</strong>
-                                    <span>Select the exact letter or certificate you want to send.</span>
-                                </div>
-                            </div>
-                            <div class="step">
-                                <div class="step-index">2</div>
-                                <div class="step-copy">
-                                    <strong>Complete only the visible fields</strong>
-                                    <span>PaperBot hides unrelated inputs so the current task stays focused.</span>
-                                </div>
-                            </div>
-                            <div class="step">
-                                <div class="step-index">3</div>
-                                <div class="step-copy">
-                                    <strong>Generate, review, then send</strong>
-                                    <span>The send button appears against the staged preview, not the raw form.</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <div class="preview-empty">Generate a preview to review before sending.</div>
                 {% endif %}
             </aside>
         </div>
