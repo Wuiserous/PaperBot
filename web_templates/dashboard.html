@@ -8,23 +8,32 @@
     <link rel="icon" href="{{ url_for('static', filename='icons/favicon-32.png') }}" sizes="32x32" type="image/png">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
     <link rel="manifest" href="{{ url_for('static', filename='site.webmanifest') }}">
-    <meta name="theme-color" content="#161514">
+    <meta name="theme-color" content="#141518">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="PaperBot">
     <style>
         :root {
-            --bg: #f6f1ea;
-            --card: rgba(255, 255, 255, 0.92);
-            --card-soft: rgba(255, 255, 255, 0.74);
-            --text: #1f1a17;
-            --muted: #70655d;
-            --line: rgba(93, 67, 47, 0.12);
-            --accent: #ae5731;
-            --accent-dark: #7f3319;
-            --accent-soft: rgba(174, 87, 49, 0.08);
-            --success: #1f6a45;
-            --success-soft: rgba(31, 106, 69, 0.08);
-            --shadow: 0 18px 44px rgba(61, 43, 30, 0.10);
+            --bg: #f4efe8;
+            --bg-deep: #ece2d4;
+            --panel: rgba(255, 255, 255, 0.84);
+            --panel-strong: rgba(255, 255, 255, 0.94);
+            --panel-dark: #18191d;
+            --text: #191714;
+            --muted: #6f655d;
+            --line: rgba(69, 52, 39, 0.10);
+            --line-strong: rgba(69, 52, 39, 0.16);
+            --accent: #b86a43;
+            --accent-deep: #8d4524;
+            --accent-soft: rgba(184, 106, 67, 0.10);
+            --success: #1d6b49;
+            --success-soft: rgba(29, 107, 73, 0.10);
+            --danger-soft: rgba(184, 106, 67, 0.12);
+            --shadow-lg: 0 32px 80px rgba(40, 25, 16, 0.12);
+            --shadow-md: 0 18px 44px rgba(40, 25, 16, 0.10);
+            --radius-xl: 28px;
+            --radius-lg: 22px;
+            --radius-md: 16px;
+            --radius-sm: 12px;
         }
 
         * { box-sizing: border-box; }
@@ -32,57 +41,364 @@
         body {
             margin: 0;
             min-height: 100vh;
-            padding: 10px;
             font-family: Georgia, "Times New Roman", serif;
             color: var(--text);
             background:
-                radial-gradient(circle at top right, rgba(174, 87, 49, 0.14), transparent 24%),
-                linear-gradient(180deg, #fbf7f2 0%, #efe4d7 100%);
+                radial-gradient(circle at top left, rgba(184, 106, 67, 0.12), transparent 24%),
+                radial-gradient(circle at top right, rgba(20, 21, 24, 0.08), transparent 28%),
+                linear-gradient(180deg, #f9f4ed 0%, var(--bg) 58%, var(--bg-deep) 100%);
+        }
+
+        img {
+            display: block;
+            max-width: 100%;
+        }
+
+        button,
+        input {
+            font: inherit;
         }
 
         .shell {
-            width: min(1200px, 100%);
+            width: min(1280px, calc(100% - 24px));
             margin: 0 auto;
+            padding: 18px 0 28px;
         }
 
-        .toolbar {
+        .topbar {
             display: flex;
-            justify-content: flex-end;
             align-items: center;
-            gap: 8px;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 18px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            min-width: 0;
+        }
+
+        .brand-mark {
+            width: 58px;
+            height: 58px;
+            padding: 6px;
+            border-radius: 18px;
+            background: rgba(24, 25, 29, 0.96);
+            box-shadow: 0 16px 36px rgba(24, 25, 29, 0.22);
+            flex: 0 0 auto;
+        }
+
+        .brand-copy {
+            min-width: 0;
+        }
+
+        .eyebrow {
+            margin: 0 0 4px;
+            font-size: 0.78rem;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+
+        .brand-title {
+            margin: 0;
+            font-size: clamp(1.5rem, 2vw, 2rem);
+            line-height: 1;
+        }
+
+        .brand-subtitle {
+            margin: 6px 0 0;
+            color: var(--muted);
+            font-size: 0.98rem;
+        }
+
+        .profile-wrap {
+            position: relative;
+            flex: 0 0 auto;
+        }
+
+        .profile-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 10px 8px 8px;
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            background: var(--panel-strong);
+            box-shadow: var(--shadow-md);
+            cursor: pointer;
+        }
+
+        .profile-avatar {
+            width: 38px;
+            height: 38px;
+            border-radius: 999px;
+            background: linear-gradient(135deg, var(--accent), var(--accent-deep));
+            color: #fff;
+            display: grid;
+            place-items: center;
+            font-size: 0.96rem;
+            font-weight: 700;
+        }
+
+        .profile-meta {
+            display: grid;
+            gap: 1px;
+            text-align: left;
+        }
+
+        .profile-name {
+            font-size: 0.94rem;
+            font-weight: 700;
+        }
+
+        .profile-label {
+            color: var(--muted);
+            font-size: 0.8rem;
+        }
+
+        .profile-chevron {
+            color: var(--muted);
+            font-size: 0.9rem;
+        }
+
+        .profile-menu {
+            position: absolute;
+            top: calc(100% + 10px);
+            right: 0;
+            width: min(280px, calc(100vw - 32px));
+            padding: 12px;
+            border-radius: 18px;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.97);
+            box-shadow: var(--shadow-lg);
+            display: none;
+            z-index: 20;
+        }
+
+        .profile-wrap.open .profile-menu {
+            display: block;
+        }
+
+        .profile-menu-head {
+            padding: 6px 6px 10px;
+            border-bottom: 1px solid var(--line);
             margin-bottom: 10px;
         }
 
-        .topbar-actions {
+        .profile-menu-head strong,
+        .profile-menu-head span {
+            display: block;
+        }
+
+        .profile-menu-head span {
+            color: var(--muted);
+            font-size: 0.86rem;
+            margin-top: 4px;
+            word-break: break-word;
+        }
+
+        .menu-action,
+        .menu-link {
+            width: 100%;
+            border: 0;
+            background: transparent;
+            color: var(--text);
+            text-decoration: none;
             display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 11px 10px;
+            border-radius: 12px;
+            cursor: pointer;
+        }
+
+        .menu-action:hover,
+        .menu-link:hover {
+            background: rgba(24, 25, 29, 0.05);
+        }
+
+        .menu-note {
+            display: block;
+            color: var(--muted);
+            font-size: 0.8rem;
+            margin-top: 4px;
+        }
+
+        .hero {
+            padding: 22px 24px;
+            border-radius: var(--radius-xl);
+            background:
+                linear-gradient(135deg, rgba(24, 25, 29, 0.96), rgba(31, 33, 39, 0.92)),
+                linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0));
+            color: #f8f2eb;
+            box-shadow: var(--shadow-lg);
+            margin-bottom: 16px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::after {
+            content: "";
+            position: absolute;
+            inset: auto -8% -42% auto;
+            width: 340px;
+            height: 340px;
+            background: radial-gradient(circle, rgba(184, 106, 67, 0.30), transparent 70%);
+            pointer-events: none;
+        }
+
+        .hero-grid {
+            position: relative;
+            z-index: 1;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 18px;
+            align-items: end;
+        }
+
+        .hero h2 {
+            margin: 0;
+            font-size: clamp(1.8rem, 2.8vw, 2.6rem);
+            line-height: 1.04;
+            max-width: 700px;
+        }
+
+        .hero p {
+            margin: 10px 0 0;
+            max-width: 700px;
+            color: rgba(248, 242, 235, 0.76);
+            font-size: 1rem;
+        }
+
+        .hero-pills {
+            display: flex;
+            flex-wrap: wrap;
             gap: 8px;
+            margin-top: 16px;
+        }
+
+        .hero-pill {
+            padding: 9px 12px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.10);
+            color: rgba(248, 242, 235, 0.88);
+            font-size: 0.88rem;
+        }
+
+        .hero-status {
+            min-width: 220px;
+            padding: 16px 18px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(12px);
+        }
+
+        .hero-status span {
+            display: block;
+            color: rgba(248, 242, 235, 0.62);
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            margin-bottom: 6px;
+        }
+
+        .hero-status strong {
+            display: block;
+            font-size: 1.06rem;
+            line-height: 1.3;
         }
 
         .layout {
             display: grid;
-            grid-template-columns: minmax(0, 1.05fr) minmax(340px, 0.95fr);
-            gap: 10px;
+            grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
+            gap: 16px;
             align-items: start;
         }
 
-        .mode-tabs {
+        .card {
+            border: 1px solid var(--line);
+            border-radius: var(--radius-xl);
+            background: var(--panel);
+            box-shadow: var(--shadow-md);
+            backdrop-filter: blur(14px);
+        }
+
+        .composer-card {
+            padding: 20px;
+        }
+
+        .stack {
+            display: grid;
+            gap: 14px;
+        }
+
+        .flash-stack {
+            display: grid;
+            gap: 10px;
+        }
+
+        .flash {
+            padding: 12px 14px;
+            border-radius: 16px;
+            border: 1px solid rgba(184, 106, 67, 0.18);
+            background: var(--accent-soft);
+            color: var(--accent-deep);
+            font-size: 0.94rem;
+        }
+
+        .flash.success {
+            border-color: rgba(29, 107, 73, 0.16);
+            background: var(--success-soft);
+            color: var(--success);
+        }
+
+        .section-head {
             display: flex;
-            gap: 8px;
-            margin-bottom: 10px;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+        }
+
+        .section-head h3 {
+            margin: 0 0 4px;
+            font-size: 1.18rem;
+        }
+
+        .section-head p {
+            margin: 0;
+            color: var(--muted);
+            font-size: 0.93rem;
+        }
+
+        .mode-tabs {
+            display: inline-grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+            padding: 6px;
+            border-radius: 999px;
+            background: rgba(24, 25, 29, 0.05);
+            border: 1px solid var(--line);
         }
 
         .mode-tab {
-            flex: 1;
-            padding: 10px 12px;
+            padding: 10px 16px;
+            border: 0;
             border-radius: 999px;
-            border: 1px solid var(--line);
-            background: var(--card-soft);
-            color: var(--text);
+            background: transparent;
+            color: var(--muted);
+            cursor: pointer;
+            transition: 160ms ease;
         }
 
         .mode-tab.active {
-            border-color: rgba(174, 87, 49, 0.45);
-            background: rgba(174, 87, 49, 0.10);
+            background: #fff;
+            color: var(--text);
+            box-shadow: 0 8px 18px rgba(24, 25, 29, 0.08);
         }
 
         .mode-panel {
@@ -93,36 +409,10 @@
             display: block;
         }
 
-        .card {
-            padding: 14px;
-            border-radius: 20px;
-            border: 1px solid var(--line);
-            background: var(--card);
-            box-shadow: var(--shadow);
-            backdrop-filter: blur(10px);
-        }
-
-        .flash {
-            margin-bottom: 10px;
-            padding: 10px 11px;
-            border-radius: 12px;
-            border: 1px solid rgba(174, 87, 49, 0.18);
-            background: var(--accent-soft);
-            color: var(--accent-dark);
-            font-size: 0.95rem;
-        }
-
-        .flash.success {
-            border-color: rgba(31, 106, 69, 0.16);
-            background: var(--success-soft);
-            color: var(--success);
-        }
-
         .type-grid {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-bottom: 10px;
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
         }
 
         .type-option {
@@ -137,188 +427,203 @@
         }
 
         .type-card {
-            min-height: 0;
-            padding: 10px 12px;
-            border-radius: 999px;
+            height: 100%;
+            padding: 14px;
+            border-radius: 20px;
             border: 1px solid var(--line);
-            background: var(--card-soft);
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            transition: border-color 150ms ease, background 150ms ease;
+            background: rgba(255, 255, 255, 0.62);
+            transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+        }
+
+        .type-grid .type-option:last-child:nth-child(odd) {
+            grid-column: span 2;
+        }
+
+        .type-card strong,
+        .type-card span {
+            display: block;
         }
 
         .type-card strong {
-            font-size: 0.94rem;
-            line-height: 1.15;
+            font-size: 0.97rem;
+            margin-bottom: 6px;
+        }
+
+        .type-card span {
+            color: var(--muted);
+            font-size: 0.84rem;
+            line-height: 1.45;
         }
 
         .type-option input:checked + .type-card {
-            border-color: rgba(174, 87, 49, 0.45);
-            background: rgba(174, 87, 49, 0.10);
+            background: rgba(255, 255, 255, 0.96);
+            border-color: rgba(184, 106, 67, 0.42);
+            box-shadow: 0 16px 28px rgba(184, 106, 67, 0.10);
+            transform: translateY(-1px);
         }
 
         .field-group {
             display: none;
-            padding: 12px;
-            border-radius: 16px;
+            padding: 18px;
+            border-radius: 24px;
             border: 1px solid var(--line);
-            background: rgba(255, 255, 255, 0.64);
+            background: rgba(255, 255, 255, 0.72);
         }
 
         .field-group.active {
             display: block;
         }
 
+        .flow-head {
+            display: grid;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .flow-head h4 {
+            margin: 0;
+            font-size: 1.1rem;
+        }
+
+        .flow-head p {
+            margin: 0;
+            color: var(--muted);
+            font-size: 0.92rem;
+            line-height: 1.5;
+        }
+
+        .flow-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .flow-badge {
+            padding: 8px 10px;
+            border-radius: 999px;
+            background: rgba(24, 25, 29, 0.05);
+            color: var(--muted);
+            font-size: 0.82rem;
+        }
+
         .field-grid {
+            display: grid;
+            gap: 12px;
+        }
+
+        .field-grid.two-col {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .field label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 0.9rem;
+        }
+
+        .field input {
+            width: 100%;
+            padding: 13px 14px;
+            border-radius: 14px;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.95);
+            color: var(--text);
+            transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+        }
+
+        .field input:focus {
+            outline: none;
+            border-color: rgba(184, 106, 67, 0.42);
+            box-shadow: 0 0 0 4px rgba(184, 106, 67, 0.10);
+            background: #fff;
+        }
+
+        input[type="file"] {
+            width: 100%;
+            padding: 14px;
+            border-radius: 16px;
+            border: 1px dashed var(--line-strong);
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .button,
+        button {
+            border: 0;
+            border-radius: 14px;
+            padding: 12px 16px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 140ms ease, opacity 140ms ease, background 140ms ease;
+        }
+
+        button:disabled,
+        .button:disabled {
+            opacity: 0.74;
+            cursor: wait;
+        }
+
+        .primary {
+            background: linear-gradient(135deg, var(--accent), var(--accent-deep));
+            color: #fff;
+            box-shadow: 0 14px 28px rgba(184, 106, 67, 0.22);
+        }
+
+        .secondary {
+            background: rgba(255, 255, 255, 0.88);
+            color: var(--text);
+            border: 1px solid var(--line);
+        }
+
+        .cta-row {
+            margin-top: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .cta-hint {
+            color: var(--muted);
+            font-size: 0.88rem;
+        }
+
+        .bulk-helper {
             display: grid;
             gap: 10px;
         }
 
-        .field-grid.two-col {
-            grid-template-columns: 1fr 1fr;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-size: 0.92rem;
-        }
-
-        input {
-            width: 100%;
-            padding: 11px 12px;
-            border-radius: 12px;
-            border: 1px solid var(--line);
-            font: inherit;
-            background: white;
-        }
-
-        input[type="file"] {
-            padding: 9px;
-        }
-
         .format-line {
-            padding: 10px 12px;
-            border-radius: 12px;
-            border: 1px dashed rgba(93, 67, 47, 0.22);
-            background: rgba(255, 255, 255, 0.55);
+            padding: 12px 14px;
+            border-radius: 16px;
+            border: 1px dashed var(--line-strong);
+            background: rgba(255, 255, 255, 0.68);
             color: var(--muted);
             overflow-x: auto;
             white-space: nowrap;
+            font-size: 0.9rem;
         }
 
         .hidden-format {
             display: none;
         }
 
-        .actions {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            margin-top: 10px;
-        }
-
-        .button,
-        button {
-            padding: 11px 14px;
-            border: 0;
-            border-radius: 12px;
-            font: inherit;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        button:disabled,
-        .button:disabled {
-            cursor: wait;
-            opacity: 0.72;
-        }
-
-        .primary {
-            color: white;
-            background: linear-gradient(135deg, var(--accent), var(--accent-dark));
-        }
-
-        .secondary {
-            color: var(--accent-dark);
-            background: rgba(255, 255, 255, 0.78);
-            border: 1px solid var(--line);
-        }
-
-        .preview-frame {
-            overflow: hidden;
-            border-radius: 14px;
-            border: 1px solid var(--line);
-            background: white;
-        }
-
-        .preview-status {
-            margin-bottom: 10px;
-            padding: 10px 12px;
-            border-radius: 14px;
-            border: 1px solid rgba(31, 106, 69, 0.18);
-            background: var(--success-soft);
-            color: var(--success);
-            display: grid;
-            gap: 4px;
-        }
-
-        .preview-status.mismatch {
-            border-color: rgba(174, 87, 49, 0.18);
-            background: var(--accent-soft);
-            color: var(--accent-dark);
-        }
-
-        .preview-frame img {
-            display: block;
-            width: 100%;
-            height: auto;
-        }
-
-        .summary {
-            margin-top: 10px;
-            padding: 10px 12px;
-            border-radius: 14px;
-            border: 1px solid var(--line);
-            background: var(--card-soft);
-            display: grid;
-            gap: 7px;
-        }
-
-        .summary-row {
-            display: flex;
-            justify-content: space-between;
-            gap: 10px;
-        }
-
-        .summary-row span {
-            color: var(--muted);
-        }
-
-        .empty {
-            min-height: 120px;
-            border-radius: 14px;
-            border: 1px dashed rgba(93, 67, 47, 0.22);
-            background: rgba(255, 255, 255, 0.55);
-            padding: 14px;
-            color: var(--muted);
-            display: grid;
-            place-items: center;
-            text-align: center;
-        }
-
         .bulk-status {
             display: none;
-            margin-top: 10px;
-            padding: 12px;
-            border-radius: 14px;
+            margin-top: 14px;
+            padding: 14px;
+            border-radius: 18px;
             border: 1px solid var(--line);
-            background: var(--card-soft);
+            background: rgba(255, 255, 255, 0.74);
         }
 
         .bulk-status.active {
@@ -330,226 +635,507 @@
             height: 10px;
             margin: 10px 0;
             border-radius: 999px;
-            background: rgba(93, 67, 47, 0.12);
+            background: rgba(24, 25, 29, 0.08);
             overflow: hidden;
         }
 
         .progress-fill {
             width: 0%;
             height: 100%;
-            background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+            background: linear-gradient(135deg, var(--accent), var(--accent-deep));
             transition: width 180ms ease;
         }
 
         .bulk-meta {
             display: flex;
             justify-content: space-between;
-            gap: 8px;
+            gap: 10px;
             color: var(--muted);
+            font-size: 0.9rem;
         }
 
         .bulk-error {
             margin-top: 10px;
-            color: var(--accent-dark);
+            color: var(--accent-deep);
+            font-size: 0.9rem;
         }
 
-        @media (max-width: 980px) {
-            .layout {
+        .preview-card {
+            position: sticky;
+            top: 20px;
+            padding: 18px;
+        }
+
+        .preview-empty {
+            min-height: 100%;
+            padding: 20px;
+            border-radius: 24px;
+            border: 1px dashed var(--line-strong);
+            background: rgba(255, 255, 255, 0.56);
+            display: grid;
+            gap: 18px;
+            align-content: start;
+        }
+
+        .empty-mark {
+            width: 58px;
+            height: 58px;
+            padding: 6px;
+            border-radius: 18px;
+            background: rgba(24, 25, 29, 0.96);
+            box-shadow: 0 14px 28px rgba(24, 25, 29, 0.16);
+        }
+
+        .preview-empty h3,
+        .preview-pane h3 {
+            margin: 0;
+            font-size: 1.18rem;
+        }
+
+        .preview-empty p,
+        .preview-pane p {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.55;
+            font-size: 0.94rem;
+        }
+
+        .steps {
+            display: grid;
+            gap: 12px;
+        }
+
+        .step {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 12px;
+            align-items: start;
+        }
+
+        .step-index {
+            width: 28px;
+            height: 28px;
+            border-radius: 999px;
+            background: rgba(24, 25, 29, 0.08);
+            display: grid;
+            place-items: center;
+            font-size: 0.85rem;
+            color: var(--muted);
+        }
+
+        .step-copy strong,
+        .step-copy span {
+            display: block;
+        }
+
+        .step-copy span {
+            color: var(--muted);
+            font-size: 0.88rem;
+            margin-top: 2px;
+        }
+
+        .preview-pane {
+            display: grid;
+            gap: 14px;
+        }
+
+        .preview-status {
+            padding: 14px;
+            border-radius: 18px;
+            border: 1px solid rgba(29, 107, 73, 0.16);
+            background: var(--success-soft);
+            color: var(--success);
+        }
+
+        .preview-status.mismatch {
+            border-color: rgba(184, 106, 67, 0.18);
+            background: var(--danger-soft);
+            color: var(--accent-deep);
+        }
+
+        .preview-frame {
+            overflow: hidden;
+            border-radius: 20px;
+            border: 1px solid var(--line);
+            background: #fff;
+        }
+
+        .summary {
+            padding: 14px;
+            border-radius: 20px;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.72);
+            display: grid;
+            gap: 10px;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .summary-row span {
+            color: var(--muted);
+        }
+
+        .send-actions {
+            display: grid;
+            gap: 10px;
+        }
+
+        .send-note {
+            padding: 12px 14px;
+            border-radius: 16px;
+            background: rgba(24, 25, 29, 0.05);
+            color: var(--muted);
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 1120px) {
+            .type-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .type-grid .type-option:last-child:nth-child(odd) {
+                grid-column: auto;
+            }
+        }
+
+        @media (max-width: 1024px) {
+            .layout,
+            .hero-grid {
                 grid-template-columns: 1fr;
             }
+
+            .preview-card {
+                position: static;
+            }
         }
 
-        @media (max-width: 640px) {
-            body {
-                padding: 8px;
+        @media (max-width: 720px) {
+            .shell {
+                width: min(100%, calc(100% - 16px));
+                padding-top: 14px;
             }
 
-            .toolbar,
-            .actions,
+            .topbar {
+                align-items: flex-start;
+            }
+
+            .profile-meta {
+                display: none;
+            }
+
+            .type-grid,
+            .field-grid.two-col {
+                grid-template-columns: 1fr;
+            }
+
             .mode-tabs {
                 width: 100%;
-                flex-direction: column;
             }
 
-            .button,
-            button {
+            .mode-tab,
+            .actions > * {
                 width: 100%;
             }
 
-            .field-grid.two-col {
-                grid-template-columns: 1fr 1fr;
-            }
-
-            .summary-row {
+            .cta-row,
+            .section-head,
+            .summary-row,
+            .bulk-meta {
                 flex-direction: column;
-                gap: 2px;
-            }
-        }
-
-        @media (max-width: 460px) {
-            .field-grid.two-col {
-                grid-template-columns: 1fr;
+                align-items: stretch;
             }
         }
     </style>
 </head>
 <body>
     <div class="shell">
-        <div class="toolbar">
-            <a class="button secondary" href="{{ url_for('web_dashboard') }}">Reset</a>
-            <a class="button secondary" href="{{ url_for('web_logout') }}">Logout</a>
-        </div>
+        <header class="topbar">
+            <div class="brand">
+                <img class="brand-mark" src="{{ url_for('static', filename='icons/icon-192.png') }}" alt="PaperBot icon">
+                <div class="brand-copy">
+                    <p class="eyebrow">PaperBot Workspace</p>
+                    <h1 class="brand-title">PaperBot</h1>
+                    <p class="brand-subtitle">Fast, polished document delivery without the clutter.</p>
+                </div>
+            </div>
+
+            <div class="profile-wrap" id="profileWrap">
+                <button class="profile-button" type="button" id="profileButton" aria-haspopup="true" aria-expanded="false">
+                    <span class="profile-avatar">{{ user_first_name[:1]|upper }}</span>
+                    <span class="profile-meta">
+                        <span class="profile-name">{{ user_first_name }}</span>
+                        <span class="profile-label">Account</span>
+                    </span>
+                    <span class="profile-chevron">▾</span>
+                </button>
+
+                <div class="profile-menu" id="profileMenu">
+                    <div class="profile-menu-head">
+                        <strong>{{ user.get('name', 'PaperBot User') }}</strong>
+                        <span>{{ user.get('email', '') }}</span>
+                    </div>
+                    <form method="post" action="{{ url_for('web_clear_draft') }}">
+                        <button class="menu-action" type="submit" name="clear_scope" value="all">
+                            <span>
+                                Start fresh
+                                <span class="menu-note">Clear the current draft and visible form values.</span>
+                            </span>
+                            <span>↺</span>
+                        </button>
+                    </form>
+                    <a class="menu-link" href="{{ url_for('web_logout') }}">
+                        <span>
+                            Log out
+                            <span class="menu-note">Sign out of this device.</span>
+                        </span>
+                        <span>→</span>
+                    </a>
+                </div>
+            </div>
+        </header>
+
+        <section class="hero">
+            <div class="hero-grid">
+                <div>
+                    <h2>Hi {{ user_first_name }}, send the right document with less friction.</h2>
+                    <p>Choose a document type, complete only the fields that matter, preview once, then send with confidence. Everything here is tuned to keep the next step obvious.</p>
+                    <div class="hero-pills">
+                        <span class="hero-pill">Preview-first workflow</span>
+                        <span class="hero-pill">Single and bulk sending</span>
+                        <span class="hero-pill">Safer staged sends</span>
+                    </div>
+                </div>
+                <div class="hero-status">
+                    <span>Current focus</span>
+                    {% if draft %}
+                        <strong>{{ draft_label }} is staged and ready for review.</strong>
+                    {% else %}
+                        <strong>{{ schema[selected_type].short_label }} is selected. Generate a preview when ready.</strong>
+                    {% endif %}
+                </div>
+            </div>
+        </section>
 
         <div class="layout">
-            <section class="card">
-                {% with messages = get_flashed_messages(with_categories=true) %}
-                    {% if messages %}
-                        {% for category, message in messages %}
-                            <div class="flash {% if category == 'success' %}success{% endif %}">{{ message }}</div>
-                        {% endfor %}
-                    {% endif %}
-                {% endwith %}
+            <section class="card composer-card">
+                <div class="stack">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            <div class="flash-stack">
+                                {% for category, message in messages %}
+                                    <div class="flash {% if category == 'success' %}success{% endif %}">{{ message }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    {% endwith %}
 
-                <form method="post" action="{{ url_for('web_preview') }}" id="previewForm">
-                    <div class="mode-tabs">
-                        <button class="mode-tab active" type="button" data-mode-button="single">Single</button>
-                        <button class="mode-tab" type="button" data-mode-button="bulk">Bulk</button>
+                    <div class="section-head">
+                        <div>
+                            <h3>Compose</h3>
+                            <p>Pick the document you want to send, then fill only that workflow.</p>
+                        </div>
+                        <div class="mode-tabs">
+                            <button class="mode-tab active" type="button" data-mode-button="single">Single</button>
+                            <button class="mode-tab" type="button" data-mode-button="bulk">Bulk</button>
+                        </div>
                     </div>
 
-                    <div class="type-grid">
-                        {% for type_key, type_label in letter_types %}
-                            {% set config = schema[type_key] %}
-                            <label class="type-option">
-                                <input type="radio" name="letter_type" value="{{ type_key }}" {% if selected_type == type_key %}checked{% endif %}>
-                                <div class="type-card">
-                                    <strong>{{ config.short_label }}</strong>
-                                </div>
-                            </label>
-                        {% endfor %}
-                    </div>
+                    <form method="post" action="{{ url_for('web_preview') }}" id="previewForm" class="stack">
+                        <div class="type-grid">
+                            {% for type_key, type_label in letter_types %}
+                                {% set config = schema[type_key] %}
+                                <label class="type-option">
+                                    <input type="radio" name="letter_type" value="{{ type_key }}" {% if selected_type == type_key %}checked{% endif %}>
+                                    <div class="type-card">
+                                        <strong>{{ config.short_label }}</strong>
+                                        <span>{{ config.description }}</span>
+                                    </div>
+                                </label>
+                            {% endfor %}
+                        </div>
 
-                    <div class="mode-panel active" data-mode-panel="single">
-                        {% for type_key, config in schema.items() %}
-                            {% set field_count = config.fields|length %}
-                            <div class="field-group {% if selected_type == type_key %}active{% endif %}" data-letter-group="{{ type_key }}">
-                                <div class="field-grid {% if field_count > 1 %}two-col{% endif %}">
-                                    {% for field in config.fields %}
+                        <div class="mode-panel active" data-mode-panel="single">
+                            {% for type_key, config in schema.items() %}
+                                {% set field_count = config.fields|length %}
+                                <div class="field-group {% if selected_type == type_key %}active{% endif %}" data-letter-group="{{ type_key }}">
+                                    <div class="flow-head">
                                         <div>
-                                            <label for="{{ type_key }}_{{ field.name }}">{{ field.label }}</label>
-                                            <input
-                                                id="{{ type_key }}_{{ field.name }}"
-                                                name="{{ field.name }}"
-                                                type="{{ field.type }}"
-                                                value="{{ form_values_by_type.get(type_key, {}).get(field.name, '') }}"
-                                                {% if field.placeholder %}placeholder="{{ field.placeholder }}"{% endif %}
-                                                {% if field.required %}required{% endif %}
-                                                autocomplete="off"
-                                            >
+                                            <h4>{{ config.label }}</h4>
+                                            <p>{{ config.helper_text }}</p>
                                         </div>
-                                    {% endfor %}
+                                        <div class="flow-meta">
+                                            <span class="flow-badge">Sent from {{ config.sender_label }}</span>
+                                            <span class="flow-badge">{{ config.fields|length }} field{% if config.fields|length != 1 %}s{% endif %}</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="field-grid {% if field_count > 1 %}two-col{% endif %}">
+                                        {% for field in config.fields %}
+                                            <div class="field">
+                                                <label for="{{ type_key }}_{{ field.name }}">{{ field.label }}</label>
+                                                <input
+                                                    id="{{ type_key }}_{{ field.name }}"
+                                                    name="{{ field.name }}"
+                                                    type="{{ field.type }}"
+                                                    value="{{ form_values_by_type.get(type_key, {}).get(field.name, '') }}"
+                                                    {% if field.placeholder %}placeholder="{{ field.placeholder }}"{% endif %}
+                                                    {% if field.required %}required{% endif %}
+                                                    autocomplete="off"
+                                                >
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+
+                            <div class="cta-row">
+                                <span class="cta-hint">Preview before send so the final document always matches what you reviewed.</span>
+                                <div class="actions">
+                                    <button class="primary" type="submit" id="previewButton">Generate Preview</button>
+                                    <button class="secondary" type="submit" formaction="{{ url_for('web_clear_draft') }}" name="clear_scope" value="all">Clear Form</button>
                                 </div>
                             </div>
-                        {% endfor %}
-
-                        <div class="actions">
-                            <button class="primary" type="submit" id="previewButton">Preview</button>
-                            <button class="secondary" type="submit" formaction="{{ url_for('web_clear_draft') }}" name="clear_scope" value="all">Clear</button>
-                        </div>
-                    </div>
-                </form>
-
-                <form class="mode-panel" data-mode-panel="bulk" id="bulkForm" enctype="multipart/form-data">
-                    <input type="hidden" name="letter_type" id="bulkLetterType" value="{{ selected_type }}">
-                    {% for type_key, header_format in bulk_header_formats.items() %}
-                        <div class="format-line {% if selected_type != type_key %}hidden-format{% endif %}" data-format-line="{{ type_key }}">{{ header_format }}</div>
-                    {% endfor %}
-                    <div style="margin-top: 10px;">
-                        <input type="file" name="csv_file" accept=".csv,text/csv" required>
-                    </div>
-                    <div class="actions">
-                        <button class="primary" type="submit">Start Bulk</button>
-                    </div>
-
-                    <div class="bulk-status" id="bulkStatus">
-                        <div class="bulk-meta">
-                            <strong id="bulkState">Queued</strong>
-                            <span id="bulkCount">0/0</span>
-                        </div>
-                        <div class="progress-track"><div class="progress-fill" id="bulkProgress"></div></div>
-                        <div class="bulk-meta">
-                            <span id="bulkSent">Sent 0</span>
-                            <span id="bulkFailed">Failed 0</span>
-                        </div>
-                        <div class="bulk-error" id="bulkError"></div>
-                        <div class="actions" id="bulkExportWrap" style="display: none;">
-                            <a class="button secondary" id="bulkExportLink" href="#">Export Failed CSV</a>
-                        </div>
-                    </div>
-                </form>
-            </section>
-
-            <aside class="card">
-                {% if draft %}
-                    <div class="preview-status {% if not draft_matches_selected %}mismatch{% endif %}">
-                        <strong>Preview ready for {{ draft_label }}</strong>
-                        {% if draft_matches_selected %}
-                            <span>This is the exact document that will be sent when you click send.</span>
-                        {% else %}
-                            <span>You are editing {{ schema[selected_type].short_label }}, but the staged preview is still {{ draft_label }}. Generate a new preview to replace it.</span>
-                        {% endif %}
-                    </div>
-
-                    <div class="preview-frame">
-                        <img src="{{ url_for('web_preview_image') }}?v={{ preview_token }}" alt="Letter preview">
-                    </div>
-
-                    <div class="summary">
-                        <div class="summary-row">
-                            <span>Type</span>
-                            <strong>{{ draft_label }}</strong>
-                        </div>
-                        <div class="summary-row">
-                            <span>Name</span>
-                            <strong>{{ draft.recipient_data.name }}</strong>
-                        </div>
-                        <div class="summary-row">
-                            <span>Email</span>
-                            <strong>{{ draft.recipient_data.email }}</strong>
-                        </div>
-                        {% if draft.form_data.domain %}
-                            <div class="summary-row">
-                                <span>Domain</span>
-                                <strong>{{ draft.form_data.domain }}</strong>
-                            </div>
-                        {% endif %}
-                        {% if draft.form_data.training_from %}
-                            <div class="summary-row">
-                                <span>Date</span>
-                                <strong>{{ draft.form_data.training_from }}</strong>
-                            </div>
-                        {% elif draft.form_data.date %}
-                            <div class="summary-row">
-                                <span>Date</span>
-                                <strong>{{ draft.form_data.date }}</strong>
-                            </div>
-                        {% endif %}
-                        {% if draft.form_data.cert_id %}
-                            <div class="summary-row">
-                                <span>ID</span>
-                                <strong>{{ draft.form_data.cert_id }}</strong>
-                            </div>
-                        {% endif %}
-                    </div>
-
-                    <form method="post" action="{{ url_for('web_send') }}" id="sendForm">
-                        <input type="hidden" name="draft_id" value="{{ draft.id }}">
-                        <div class="actions">
-                            <button class="primary" type="submit" id="sendButton">Send This Preview</button>
-                            <button class="secondary" type="submit" formaction="{{ url_for('web_clear_draft') }}" name="clear_scope" value="preview_only">Discard Preview</button>
                         </div>
                     </form>
+
+                    <form class="mode-panel" data-mode-panel="bulk" id="bulkForm" enctype="multipart/form-data">
+                        <div class="stack">
+                            <div class="bulk-helper">
+                                <div class="section-head">
+                                    <div>
+                                        <h3>Bulk upload</h3>
+                                        <p>Upload a CSV matching the selected document type. We will process and track progress here.</p>
+                                    </div>
+                                </div>
+
+                                <input type="hidden" name="letter_type" id="bulkLetterType" value="{{ selected_type }}">
+                                {% for type_key, header_format in bulk_header_formats.items() %}
+                                    <div class="format-line {% if selected_type != type_key %}hidden-format{% endif %}" data-format-line="{{ type_key }}">{{ header_format }}</div>
+                                {% endfor %}
+                                <input type="file" name="csv_file" accept=".csv,text/csv" required>
+                            </div>
+
+                            <div class="actions">
+                                <button class="primary" type="submit">Start Bulk Send</button>
+                            </div>
+
+                            <div class="bulk-status" id="bulkStatus">
+                                <div class="bulk-meta">
+                                    <strong id="bulkState">Queued</strong>
+                                    <span id="bulkCount">0/0</span>
+                                </div>
+                                <div class="progress-track"><div class="progress-fill" id="bulkProgress"></div></div>
+                                <div class="bulk-meta">
+                                    <span id="bulkSent">Sent 0</span>
+                                    <span id="bulkFailed">Failed 0</span>
+                                </div>
+                                <div class="bulk-error" id="bulkError"></div>
+                                <div class="actions" id="bulkExportWrap" style="display: none;">
+                                    <a class="button secondary" id="bulkExportLink" href="#">Export Failed CSV</a>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <aside class="card preview-card">
+                {% if draft %}
+                    <div class="preview-pane">
+                        <div class="preview-status {% if not draft_matches_selected %}mismatch{% endif %}">
+                            <strong>Preview ready for {{ draft_label }}</strong>
+                            {% if draft_matches_selected %}
+                                <div>This staged preview is exactly what will be sent when you confirm.</div>
+                            {% else %}
+                                <div>You are editing {{ schema[selected_type].short_label }}, but the staged preview is still {{ draft_label }}. Generate a new preview to replace it.</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="preview-frame">
+                            <img src="{{ url_for('web_preview_image') }}?v={{ preview_token }}" alt="Letter preview">
+                        </div>
+
+                        <div class="summary">
+                            <div class="summary-row">
+                                <span>Type</span>
+                                <strong>{{ draft_label }}</strong>
+                            </div>
+                            <div class="summary-row">
+                                <span>Name</span>
+                                <strong>{{ draft.recipient_data.name }}</strong>
+                            </div>
+                            <div class="summary-row">
+                                <span>Email</span>
+                                <strong>{{ draft.recipient_data.email }}</strong>
+                            </div>
+                            {% if draft.form_data.domain %}
+                                <div class="summary-row">
+                                    <span>Domain</span>
+                                    <strong>{{ draft.form_data.domain }}</strong>
+                                </div>
+                            {% endif %}
+                            {% if draft.form_data.training_from %}
+                                <div class="summary-row">
+                                    <span>Date</span>
+                                    <strong>{{ draft.form_data.training_from }}</strong>
+                                </div>
+                            {% elif draft.form_data.date %}
+                                <div class="summary-row">
+                                    <span>Date</span>
+                                    <strong>{{ draft.form_data.date }}</strong>
+                                </div>
+                            {% endif %}
+                            {% if draft.form_data.cert_id %}
+                                <div class="summary-row">
+                                    <span>ID</span>
+                                    <strong>{{ draft.form_data.cert_id }}</strong>
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <form method="post" action="{{ url_for('web_send') }}" id="sendForm" class="send-actions">
+                            <input type="hidden" name="draft_id" value="{{ draft.id }}">
+                            <button class="primary" type="submit" id="sendButton">Send This Preview</button>
+                            <button class="secondary" type="submit" formaction="{{ url_for('web_clear_draft') }}" name="clear_scope" value="preview_only">Discard Preview</button>
+                        </form>
+
+                        <div class="send-note">PaperBot keeps sending separate from editing so you always know which preview is live.</div>
+                    </div>
                 {% else %}
-                    <div class="empty">Generate a preview to review the final document before sending.</div>
+                    <div class="preview-empty">
+                        <img class="empty-mark" src="{{ url_for('static', filename='icons/icon-192.png') }}" alt="PaperBot icon">
+                        <div>
+                            <h3>Nothing staged yet</h3>
+                            <p>Your preview will appear here once you generate it. Until then, focus on picking the right document and filling the active form.</p>
+                        </div>
+                        <div class="steps">
+                            <div class="step">
+                                <div class="step-index">1</div>
+                                <div class="step-copy">
+                                    <strong>Choose the document type</strong>
+                                    <span>Select the exact letter or certificate you want to send.</span>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <div class="step-index">2</div>
+                                <div class="step-copy">
+                                    <strong>Complete only the visible fields</strong>
+                                    <span>PaperBot hides unrelated inputs so the current task stays focused.</span>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <div class="step-index">3</div>
+                                <div class="step-copy">
+                                    <strong>Generate, review, then send</strong>
+                                    <span>The send button appears against the staged preview, not the raw form.</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 {% endif %}
             </aside>
         </div>
@@ -562,7 +1148,9 @@
         const modePanels = document.querySelectorAll('[data-mode-panel]');
         const bulkLetterType = document.querySelector('#bulkLetterType');
         const formatLines = document.querySelectorAll('[data-format-line]');
-        const previewCard = document.querySelector('aside.card');
+        const previewCard = document.querySelector('.preview-card');
+        const profileWrap = document.querySelector('#profileWrap');
+        const profileButton = document.querySelector('#profileButton');
 
         function setActiveGroup(type) {
             groups.forEach((group) => {
@@ -585,6 +1173,7 @@
             if (bulkLetterType) {
                 bulkLetterType.value = type;
             }
+
             formatLines.forEach((line) => {
                 line.style.display = line.dataset.formatLine === type ? 'block' : 'none';
             });
@@ -602,12 +1191,34 @@
             });
         });
 
+        if (profileWrap && profileButton) {
+            profileButton.addEventListener('click', () => {
+                const willOpen = !profileWrap.classList.contains('open');
+                profileWrap.classList.toggle('open', willOpen);
+                profileButton.setAttribute('aria-expanded', String(willOpen));
+            });
+
+            document.addEventListener('click', (event) => {
+                if (!profileWrap.contains(event.target)) {
+                    profileWrap.classList.remove('open');
+                    profileButton.setAttribute('aria-expanded', 'false');
+                }
+            });
+
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape') {
+                    profileWrap.classList.remove('open');
+                    profileButton.setAttribute('aria-expanded', 'false');
+                }
+            });
+        }
+
         const selected = document.querySelector('input[name="letter_type"]:checked');
         if (selected) {
             setActiveGroup(selected.value);
         }
 
-        if (previewCard && previewCard.querySelector('.preview-frame') && window.matchMedia('(max-width: 640px)').matches) {
+        if (previewCard && previewCard.querySelector('.preview-frame') && window.matchMedia('(max-width: 720px)').matches) {
             previewCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 

@@ -535,6 +535,9 @@ def build_dashboard_context():
     schema = letter_service.get_letter_schema()
     letter_types = letter_service.LETTER_TYPE_OPTIONS
     selected_type = session.get("selected_letter_type", letter_types[0][0])
+    user = web_auth.current_web_user() or {}
+    full_name = (user.get("name") or "").strip()
+    first_name = full_name.split()[0] if full_name else "there"
     draft = draft_store.load_draft(session.get("web_draft_id"))
     if draft:
         draft["id"] = session.get("web_draft_id")
@@ -546,6 +549,8 @@ def build_dashboard_context():
         "schema": schema,
         "letter_types": letter_types,
         "selected_type": selected_type,
+        "user": user,
+        "user_first_name": first_name,
         "draft": draft,
         "draft_label": draft_label,
         "draft_matches_selected": bool(draft and draft["letter_type"] == selected_type),
