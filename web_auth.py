@@ -129,10 +129,10 @@ def build_payment_context() -> dict:
 
             payment_url = razorpay_handler.create_payment_link(user["id"])
             if not payment_url:
-                payment_error = "Payment link is not configured yet."
+                payment_error = razorpay_handler.get_last_error() or "Payment link is not available right now."
         except Exception as exc:
             logging.exception("Failed to create web payment link")
-            payment_error = "Payment link is not configured yet."
+            payment_error = "Payment link is not available right now."
 
     return {"user": user, "status": status, "payment_url": payment_url, "payment_error": payment_error}
 
