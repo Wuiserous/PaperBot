@@ -1,5 +1,6 @@
 import os
 import asyncio
+import base64
 import logging
 from datetime import timedelta
 from collections import deque
@@ -543,6 +544,10 @@ def build_dashboard_context():
     form_values_by_type = _get_form_values_by_type()
     preview_token = os.path.getmtime(draft["preview_path"]) if draft and os.path.exists(draft["preview_path"]) else "0"
     just_previewed = bool(session.pop("just_previewed", False))
+    preview_data_url = None
+    if draft and draft.get("preview_path") and os.path.exists(draft["preview_path"]):
+        with open(draft["preview_path"], "rb") as preview_file:
+            preview_data_url = "data:image/png;base64," + base64.b64encode(preview_file.read()).decode("ascii")
 
     return {
         "schema": schema,
@@ -554,6 +559,7 @@ def build_dashboard_context():
         "draft_matches_selected": bool(draft and draft["letter_type"] == selected_type),
         "form_values_by_type": form_values_by_type,
         "preview_token": preview_token,
+        "preview_data_url": preview_data_url,
         "just_previewed": just_previewed,
         "bulk_header_formats": bulk_service.get_header_formats(),
     }

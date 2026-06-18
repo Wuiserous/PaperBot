@@ -682,7 +682,7 @@
                         </div>
 
                         <div class="preview-frame">
-                            <img src="{{ url_for('web_preview_image', draft_id=draft.id) }}?v={{ preview_token }}" alt="Letter preview">
+                            <img src="{{ preview_data_url or url_for('web_preview_image', draft_id=draft.id) ~ '?v=' ~ preview_token }}" alt="Letter preview">
                         </div>
 
                         <div class="summary">
