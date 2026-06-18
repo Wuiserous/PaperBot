@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PaperBot</title>
+    <style>
+        :root {
+            --bg: #f6f1ea;
+            --card: rgba(255, 255, 255, 0.92);
+            --card-soft: rgba(255, 255, 255, 0.74);
+            --text: #1f1a17;
+            --muted: #70655d;
+            --line: rgba(93, 67, 47, 0.12);
+            --accent: #ae5731;
+            --accent-dark: #7f3319;
+            --accent-soft: rgba(174, 87, 49, 0.08);
+            --success: #1f6a45;
+            --success-soft: rgba(31, 106, 69, 0.08);
+            --shadow: 0 18px 44px rgba(61, 43, 30, 0.10);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            padding: 10px;
+            font-family: Georgia, "Times New Roman", serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at top right, rgba(174, 87, 49, 0.14), transparent 24%),
+                linear-gradient(180deg, #fbf7f2 0%, #efe4d7 100%);
+        }
+
+        .shell {
+            width: min(1200px, 100%);
+            margin: 0 auto;
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .topbar-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1.05fr) minmax(340px, 0.95fr);
+            gap: 10px;
+            align-items: start;
+        }
+
+        .card {
+            padding: 14px;
+            border-radius: 20px;
+            border: 1px solid var(--line);
+            background: var(--card);
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(10px);
+        }
+
+        .flash {
+            margin-bottom: 10px;
+            padding: 10px 11px;
+            border-radius: 12px;
+            border: 1px solid rgba(174, 87, 49, 0.18);
+            background: var(--accent-soft);
+            color: var(--accent-dark);
+            font-size: 0.95rem;
+        }
+
+        .flash.success {
+            border-color: rgba(31, 106, 69, 0.16);
+            background: var(--success-soft);
+            color: var(--success);
+        }
+
+        .type-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .type-option {
+            display: block;
+            cursor: pointer;
+        }
+
+        .type-option input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .type-card {
+            min-height: 0;
+            padding: 10px 12px;
+            border-radius: 999px;
+            border: 1px solid var(--line);
+            background: var(--card-soft);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            transition: border-color 150ms ease, background 150ms ease;
+        }
+
+        .type-card strong {
+            font-size: 0.94rem;
+            line-height: 1.15;
+        }
+
+        .type-option input:checked + .type-card {
+            border-color: rgba(174, 87, 49, 0.45);
+            background: rgba(174, 87, 49, 0.10);
+        }
+
+        .field-group {
+            display: none;
+            padding: 12px;
+            border-radius: 16px;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.64);
+        }
+
+        .field-group.active {
+            display: block;
+        }
+
+        .field-grid {
+            display: grid;
+            gap: 10px;
+        }
+
+        .field-grid.two-col {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.92rem;
+        }
+
+        input {
+            width: 100%;
+            padding: 11px 12px;
+            border-radius: 12px;
+            border: 1px solid var(--line);
+            font: inherit;
+            background: white;
+        }
+
+        .actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .button,
+        button {
+            padding: 11px 14px;
+            border: 0;
+            border-radius: 12px;
+            font: inherit;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .primary {
+            color: white;
+            background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+        }
+
+        .secondary {
+            color: var(--accent-dark);
+            background: rgba(255, 255, 255, 0.78);
+            border: 1px solid var(--line);
+        }
+
+        .preview-frame {
+            overflow: hidden;
+            border-radius: 14px;
+            border: 1px solid var(--line);
+            background: white;
+        }
+
+        .preview-frame img {
+            display: block;
+            width: 100%;
+            height: auto;
+        }
+
+        .summary {
+            margin-top: 10px;
+            padding: 10px 12px;
+            border-radius: 14px;
+            border: 1px solid var(--line);
+            background: var(--card-soft);
+            display: grid;
+            gap: 7px;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .summary-row span {
+            color: var(--muted);
+        }
+
+        .empty {
+            min-height: 120px;
+            border-radius: 14px;
+            border: 1px dashed rgba(93, 67, 47, 0.22);
+            background: rgba(255, 255, 255, 0.55);
+        }
+
+        @media (max-width: 980px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 640px) {
+            body {
+                padding: 8px;
+            }
+
+            .toolbar,
+            .actions {
+                width: 100%;
+                flex-direction: column;
+            }
+
+            .button,
+            button {
+                width: 100%;
+            }
+
+            .field-grid.two-col {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .summary-row {
+                flex-direction: column;
+                gap: 2px;
+            }
+        }
+
+        @media (max-width: 460px) {
+            .field-grid.two-col {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="shell">
+        <div class="toolbar">
+            <a class="button secondary" href="{{ url_for('web_dashboard') }}">Reset</a>
+            <a class="button secondary" href="{{ url_for('web_logout') }}">Logout</a>
+        </div>
+
+        <div class="layout">
+            <section class="card">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="flash {% if category == 'success' %}success{% endif %}">{{ message }}</div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <form method="post" action="{{ url_for('web_preview') }}">
+                    <div class="type-grid">
+                        {% for type_key, type_label in letter_types %}
+                            {% set config = schema[type_key] %}
+                            <label class="type-option">
+                                <input type="radio" name="letter_type" value="{{ type_key }}" {% if selected_type == type_key %}checked{% endif %}>
+                                <div class="type-card">
+                                    <strong>{{ config.short_label }}</strong>
+                                </div>
+                            </label>
+                        {% endfor %}
+                    </div>
+
+                    {% for type_key, config in schema.items() %}
+                        {% set field_count = config.fields|length %}
+                        <div class="field-group {% if selected_type == type_key %}active{% endif %}" data-letter-group="{{ type_key }}">
+                            <div class="field-grid {% if field_count > 1 %}two-col{% endif %}">
+                                {% for field in config.fields %}
+                                    <div>
+                                        <label for="{{ type_key }}_{{ field.name }}">{{ field.label }}</label>
+                                        <input
+                                            id="{{ type_key }}_{{ field.name }}"
+                                            name="{{ field.name }}"
+                                            type="{{ field.type }}"
+                                            value="{{ form_values.get(field.name, '') if selected_type == type_key else '' }}"
+                                            {% if field.placeholder %}placeholder="{{ field.placeholder }}"{% endif %}
+                                            {% if field.required %}required{% endif %}
+                                            autocomplete="off"
+                                        >
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endfor %}
+
+                    <div class="actions">
+                        <button class="primary" type="submit">Preview</button>
+                        <button class="secondary" type="submit" formaction="{{ url_for('web_clear_draft') }}">Clear</button>
+                    </div>
+                </form>
+            </section>
+
+            <aside class="card">
+                {% if draft %}
+                    <div class="preview-frame">
+                        <img src="{{ url_for('web_preview_image') }}?v={{ preview_token }}" alt="Letter preview">
+                    </div>
+
+                    <div class="summary">
+                        <div class="summary-row">
+                            <span>Type</span>
+                            <strong>{{ draft_label }}</strong>
+                        </div>
+                        <div class="summary-row">
+                            <span>Name</span>
+                            <strong>{{ draft.recipient_data.name }}</strong>
+                        </div>
+                        <div class="summary-row">
+                            <span>Email</span>
+                            <strong>{{ draft.recipient_data.email }}</strong>
+                        </div>
+                        {% if draft.form_data.domain %}
+                            <div class="summary-row">
+                                <span>Domain</span>
+                                <strong>{{ draft.form_data.domain }}</strong>
+                            </div>
+                        {% endif %}
+                        {% if draft.form_data.training_from %}
+                            <div class="summary-row">
+                                <span>Date</span>
+                                <strong>{{ draft.form_data.training_from }}</strong>
+                            </div>
+                        {% elif draft.form_data.date %}
+                            <div class="summary-row">
+                                <span>Date</span>
+                                <strong>{{ draft.form_data.date }}</strong>
+                            </div>
+                        {% endif %}
+                        {% if draft.form_data.cert_id %}
+                            <div class="summary-row">
+                                <span>ID</span>
+                                <strong>{{ draft.form_data.cert_id }}</strong>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <form method="post" action="{{ url_for('web_send') }}">
+                        <div class="actions">
+                            <button class="primary" type="submit">Send</button>
+                            <button class="secondary" type="submit" formaction="{{ url_for('web_clear_draft') }}">Discard</button>
+                        </div>
+                    </form>
+                {% else %}
+                    <div class="empty"></div>
+                {% endif %}
+            </aside>
+        </div>
+    </div>
+
+    <script>
+        const groups = document.querySelectorAll('[data-letter-group]');
+        const radios = document.querySelectorAll('input[name="letter_type"]');
+
+        function setActiveGroup(type) {
+            groups.forEach((group) => {
+                const active = group.dataset.letterGroup === type;
+                group.classList.toggle('active', active);
+                group.querySelectorAll('input').forEach((input) => {
+                    if (active) {
+                        input.disabled = false;
+                        if (input.dataset.wasRequired === 'true') {
+                            input.required = true;
+                        }
+                    } else {
+                        input.dataset.wasRequired = input.required ? 'true' : 'false';
+                        input.required = false;
+                        input.disabled = true;
+                    }
+                });
+            });
+        }
+
+        radios.forEach((radio) => {
+            radio.addEventListener('change', () => setActiveGroup(radio.value));
+        });
+
+        const selected = document.querySelector('input[name="letter_type"]:checked');
+        if (selected) {
+            setActiveGroup(selected.value);
+        }
+    </script>
+</body>
+</html>
