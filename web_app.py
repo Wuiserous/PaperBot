@@ -1,5 +1,6 @@
 import logging
 import os
+from datetime import timedelta
 
 from flask import Flask, Response, flash, jsonify, render_template, request, send_file, session, url_for
 from config_loader import load_project_env
@@ -13,6 +14,9 @@ SECRET = os.getenv("FLASK_SECRET_KEY", "paperbot")
 
 app = Flask(__name__, template_folder="web_templates")
 app.secret_key = SECRET
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=45)
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"] = bool(os.getenv("VERCEL"))
 web_auth.register_auth_routes(app)
 
 

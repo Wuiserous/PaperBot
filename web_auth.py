@@ -64,10 +64,14 @@ def complete_login(otp: str) -> dict:
     status = database_handler.get_user_status(user_id)
     if status.get("status") == "not_found":
         database_handler.register_new_user(user_id, pending["name"] or pending["email"])
-        database_handler.update_user_subscription(user_id)
+        granted_user_id = session.get("web_granted_user_id")
+        if not granted_user_id or int(granted_user_id) == user_id:
+            database_handler.update_user_subscription(user_id)
+            session["web_granted_user_id"] = user_id
         database_handler.clear_user_cache(user_id)
         status = database_handler.get_user_status(user_id)
 
+    session.permanent = True
     session["web_user"] = {
         "id": user_id,
         "name": pending["name"],
@@ -187,7 +191,11 @@ def register_auth_routes(app):
 
     @app.route("/logout")
     def web_logout():
-        session.clear()
+        session.pop("pending_login", None)
+        session.pop("web_user", None)
+        session.pop("web_draft", None)
+        session.pop("web_form_values", None)
+        session.pop("selected_letter_type", None)
         return redirect(url_for("web_login"))
 
     @app.route("/pay", methods=["GET"])

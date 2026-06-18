@@ -1,6 +1,7 @@
 import os
 import asyncio
 import logging
+from datetime import timedelta
 from collections import deque
 from functools import wraps
 from flask import Flask, Response, flash, jsonify, redirect, render_template, request, send_file, session, url_for
@@ -35,6 +36,9 @@ SECRET = "MySuperSecretPassword123"
 
 app = Flask(__name__, template_folder="web_templates")
 app.secret_key = os.getenv("FLASK_SECRET_KEY", SECRET)
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=45)
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"] = bool(os.getenv("VERCEL"))
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 web_auth.register_auth_routes(app)
 
