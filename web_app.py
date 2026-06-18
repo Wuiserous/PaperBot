@@ -2,7 +2,7 @@ import logging
 import os
 from datetime import timedelta
 
-from flask import Flask, Response, flash, jsonify, render_template, request, send_file, session, url_for
+from flask import Flask, Response, flash, jsonify, redirect, render_template, request, send_file, session, url_for
 from config_loader import load_project_env
 import draft_store
 import web_auth
