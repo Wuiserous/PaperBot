@@ -446,6 +446,12 @@
             border-radius: 18px;
             border: 1px solid var(--line);
             background: #fff;
+            min-height: 180px;
+        }
+
+        .preview-frame img {
+            width: 100%;
+            height: auto;
         }
 
         .summary {
@@ -476,6 +482,10 @@
                 position: static;
             }
 
+            .layout.has-draft .preview-card {
+                order: -1;
+            }
+
             .type-grid {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
             }
@@ -484,7 +494,8 @@
         @media (max-width: 720px) {
             .shell {
                 width: min(100%, calc(100% - 16px));
-                padding-top: 12px;
+                padding-top: 10px;
+                padding-bottom: 18px;
             }
 
             .type-grid,
@@ -500,6 +511,27 @@
                 align-items: stretch;
             }
 
+            .card {
+                border-radius: 20px;
+            }
+
+            .composer-card,
+            .preview-card {
+                padding: 14px;
+            }
+
+            .field-group {
+                padding: 14px;
+                border-radius: 18px;
+            }
+
+            .field input,
+            input[type="file"],
+            .button,
+            button {
+                min-height: 46px;
+            }
+
             .mode-tabs,
             .mode-tab,
             .actions > * {
@@ -508,6 +540,24 @@
 
             .profile-wrap {
                 align-self: flex-end;
+            }
+
+            .preview-frame {
+                min-height: 120px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .brand-title {
+                font-size: 1.35rem;
+            }
+
+            .type-card {
+                padding: 11px 10px;
+            }
+
+            .type-card strong {
+                font-size: 0.9rem;
             }
         }
     </style>
@@ -531,7 +581,7 @@
             </div>
         </header>
 
-        <div class="layout">
+        <div class="layout {% if draft %}has-draft{% endif %}">
             <section class="card composer-card">
                 <div class="stack">
                     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -767,8 +817,14 @@
             setActiveGroup(selected.value);
         }
 
-        if (previewCard && previewCard.querySelector('.preview-frame') && window.matchMedia('(max-width: 720px)').matches) {
+        if (previewCard && previewCard.querySelector('.preview-frame') && window.matchMedia('(max-width: 1040px)').matches) {
             previewCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        if (previewCard && previewCard.querySelector('.preview-frame') && {{ 'true' if just_previewed else 'false' }} && window.matchMedia('(max-width: 1040px)').matches) {
+            requestAnimationFrame(() => {
+                previewCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
         }
 
         const bulkForm = document.querySelector('#bulkForm');

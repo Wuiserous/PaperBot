@@ -65,6 +65,7 @@ def build_dashboard_context():
     draft_label = letter_service.get_letter_type_map().get(draft["letter_type"], "") if draft else ""
     form_values_by_type = _get_form_values_by_type()
     preview_token = os.path.getmtime(draft["preview_path"]) if draft and os.path.exists(draft["preview_path"]) else "0"
+    just_previewed = bool(session.pop("just_previewed", False))
 
     return {
         "schema": schema,
@@ -76,6 +77,7 @@ def build_dashboard_context():
         "draft_matches_selected": bool(draft and draft["letter_type"] == selected_type),
         "form_values_by_type": form_values_by_type,
         "preview_token": preview_token,
+        "just_previewed": just_previewed,
         "bulk_header_formats": bulk_service.get_header_formats(),
     }
 
@@ -105,6 +107,7 @@ def web_preview():
             draft_store.delete_draft(previous_draft_id)
         if letter_type == "internship_letter":
             _remember_form_values(letter_type, preview_payload["form_data"])
+        session["just_previewed"] = True
         flash("Preview ready.", "success")
     except Exception as exc:
         logging.exception("Web preview generation failed")
