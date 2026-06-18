@@ -1,11 +1,7 @@
 import logging
 import os
 
-from flask import Flask, Response, flash, jsonify, redirect, render_template, request, send_file, session, url_for
-
-import bulk_service
-import database_handler
-import letter_service
+from flask import Flask, Response, flash, jsonify, render_template, request, send_file, session, url_for
 from config_loader import load_project_env
 import web_auth
 
@@ -21,6 +17,8 @@ web_auth.register_auth_routes(app)
 
 
 def clear_session_draft():
+    import letter_service
+
     draft = session.pop("web_draft", None)
     if not draft:
         return
@@ -28,6 +26,9 @@ def clear_session_draft():
 
 
 def build_dashboard_context():
+    import bulk_service
+    import letter_service
+
     schema = letter_service.get_letter_schema()
     letter_types = letter_service.LETTER_TYPE_OPTIONS
     selected_type = session.get("selected_letter_type", letter_types[0][0])
@@ -57,6 +58,8 @@ def web_dashboard():
 @app.route("/app/preview", methods=["POST"])
 @web_auth.require_active_subscription
 def web_preview():
+    import letter_service
+
     letter_type = request.form.get("letter_type", "")
     form_data = request.form.to_dict(flat=True)
     session["selected_letter_type"] = letter_type
@@ -80,6 +83,9 @@ def web_preview():
 @app.route("/app/send", methods=["POST"])
 @web_auth.require_active_subscription
 def web_send():
+    import database_handler
+    import letter_service
+
     draft = session.get("web_draft")
     if not draft:
         flash("Generate a preview first.")
@@ -134,6 +140,8 @@ def web_preview_image():
 @app.route("/app/bulk/start", methods=["POST"])
 @web_auth.require_active_subscription
 def web_bulk_start():
+    import bulk_service
+
     letter_type = request.form.get("letter_type", "")
     upload = request.files.get("csv_file")
 
@@ -152,6 +160,8 @@ def web_bulk_start():
 @app.route("/app/bulk/status/<job_id>", methods=["GET"])
 @web_auth.require_active_subscription
 def web_bulk_status(job_id):
+    import bulk_service
+
     job = bulk_service.get_bulk_job(job_id)
     if not job:
         return jsonify({"ok": False, "error": "Bulk job not found."}), 404
@@ -161,6 +171,8 @@ def web_bulk_status(job_id):
 @app.route("/app/bulk/failed/<job_id>", methods=["GET"])
 @web_auth.require_active_subscription
 def web_bulk_failed(job_id):
+    import bulk_service
+
     try:
         csv_text = bulk_service.export_failed_rows(job_id)
     except Exception as exc:

@@ -1,9 +1,15 @@
 import os
 
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv
+except ModuleNotFoundError:
+    load_dotenv = None
 
 
 def load_project_env(base_dir: str | None = None) -> None:
+    if load_dotenv is None:
+        return
+
     if base_dir is None:
         base_dir = os.path.dirname(os.path.abspath(__file__))
 

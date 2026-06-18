@@ -4,20 +4,17 @@ import random
 import time
 from functools import wraps
 
-import resend
 from typing import Optional
 
 from flask import jsonify, redirect, render_template, request, session, url_for
 
 import database_handler
-import razorpay_handler
 from config_loader import load_project_env
 
 
 load_project_env()
 
 OTP_TTL_SECONDS = 10 * 60
-resend.api_key = os.getenv("RESEND_API_KEY")
 
 
 def web_user_id_from_email(email: str) -> int:
@@ -27,6 +24,10 @@ def web_user_id_from_email(email: str) -> int:
 
 
 def send_login_otp(name: str, email: str) -> None:
+    import resend
+
+    resend.api_key = os.getenv("RESEND_API_KEY")
+
     otp = f"{random.randint(0, 999999):06d}"
     expires_at = int(time.time()) + OTP_TTL_SECONDS
     session["pending_login"] = {
@@ -112,6 +113,8 @@ def require_active_subscription(route_func):
 
 
 def build_payment_context() -> dict:
+    import razorpay_handler
+
     user = current_web_user()
     status = current_subscription_status()
     payment_url = razorpay_handler.create_payment_link(user["id"]) if user else None
