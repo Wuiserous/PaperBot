@@ -169,9 +169,9 @@ def web_clear_draft():
     return redirect(url_for("web_dashboard"))
 
 
-@app.route("/app/preview-image", methods=["GET"])
-def web_preview_image():
-    draft = draft_store.load_draft(session.get("web_draft_id"))
+@app.route("/app/preview-image/<draft_id>", methods=["GET"])
+def web_preview_image(draft_id):
+    draft = draft_store.load_draft(draft_id)
     if not draft:
         return ("Preview not found", 404)
 
