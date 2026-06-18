@@ -170,7 +170,6 @@ def web_clear_draft():
 
 
 @app.route("/app/preview-image", methods=["GET"])
-@web_auth.require_active_subscription
 def web_preview_image():
     draft = draft_store.load_draft(session.get("web_draft_id"))
     if not draft:
