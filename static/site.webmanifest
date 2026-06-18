@@ -1,0 +1,24 @@
+{
+  "name": "PaperBot",
+  "short_name": "PaperBot",
+  "description": "PaperBot letter generation and sending app",
+  "start_url": "/app",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f6f1ea",
+  "theme_color": "#161514",
+  "icons": [
+    {
+      "src": "/static/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

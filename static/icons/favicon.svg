@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="PaperBot">
+  <rect width="512" height="512" rx="112" fill="#161514"/>
+  <path d="M150 100h164l72 72v240H150z" fill="#fff7ef"/>
+  <path d="M314 100v72h72z" fill="#d9c7b5"/>
+  <path d="M184 224h144M184 268h144M184 312h96" stroke="#2a2521" stroke-width="22" stroke-linecap="round"/>
+  <path d="M121 372l126-54 126 54-126 54z" fill="#b45a32"/>
+  <path d="M121 372l126 28 126-28" fill="none" stroke="#7c331b" stroke-width="18" stroke-linejoin="round"/>
+</svg>
