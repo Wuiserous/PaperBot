@@ -40,4 +40,4 @@ dependencies = [
 ]
 
 [tool.vercel]
-entrypoint = "flask_app:app"
+entrypoint = "web_app:app"

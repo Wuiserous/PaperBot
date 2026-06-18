@@ -1,10 +1,19 @@
 # pdf_generator.py
 
 import fitz  # PyMuPDF
+import os
+import tempfile
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 import qrcode
 import io
+
+
+def _make_output_path(filename: str) -> str:
+    if os.getenv("VERCEL"):
+        return os.path.join(tempfile.gettempdir(), filename)
+    return filename
+
 
 # --- HELPER FUNCTION FOR PREVIEW GENERATION ---
 def _create_preview_from_pdf(pdf_path: str) -> str:
@@ -31,7 +40,7 @@ def generate_campus_ambassador_pdf_with_preview(name: str) -> tuple[str, str]:
     """Generates the CA PDF and a preview image of the first page."""
     # Step 1: Generate the full PDF as before
     TEMPLATE_PATH = "templates/campus_ambassador.pdf"
-    output_path = f"CA_Letter_{name.replace(' ', '_')}.pdf"
+    output_path = _make_output_path(f"CA_Letter_{name.replace(' ', '_')}.pdf")
 
     NAME_COORDS = (110, 244)
     DATE_COORDS = (423, 245)
@@ -120,7 +129,7 @@ def generate_internship_acceptance_pdf_with_preview(name: str, month: str, domai
     except ValueError:
         raise ValueError(f"Invalid month format from sheet: '{month}'. Expected full month name (e.g., 'January').")
 
-    output_path = f"Internship_Letter_{name.replace(' ', '_')}.pdf"
+    output_path = _make_output_path(f"Internship_Letter_{name.replace(' ', '_')}.pdf")
 
     domain_lower = domain.lower()
 
@@ -168,7 +177,7 @@ def generate_offer_letter_pdf_with_preview(name: str, training_from: str) -> tup
     """Generates the Offer Letter PDF and a preview image."""
     # Step 1: Generate the full PDF as before
     TEMPLATE_PATH = "templates/offer_letter.pdf"
-    output_path = f"Offer_Letter_{name.replace(' ', '_')}.pdf"
+    output_path = _make_output_path(f"Offer_Letter_{name.replace(' ', '_')}.pdf")
     NAME_COORDS, TODAY_DATE_COORDS = (91, 293), (94, 253)
     TRAINING_DATES_COORDS, INTERNSHIP_START_COORDS, INTERNSHIP_END_COORDS = (136, 374), (170, 401), (163, 428)
 
@@ -208,7 +217,7 @@ def generate_completion_certificate(name: str, issue_date: str, domain: str, ide
     """Generates the CA PDF (Landscape) with centered domain text and a QR Code."""
 
     TEMPLATE_PATH = "templates/completion_certificate.pdf"
-    output_path = f"CA_Letter_{name.replace(' ', '_')}.pdf"
+    output_path = _make_output_path(f"CA_Letter_{name.replace(' ', '_')}.pdf")
 
     # --- Content Preparation ---
     domain_text = f"This is to certify that the candidate has successfully completed internship in {domain}."
@@ -290,7 +299,7 @@ def ca_certificate(name: str, issue_date: str) -> tuple[str, str]:
     """Generates the CA PDF (Landscape) with centered domain text and a QR Code."""
 
     TEMPLATE_PATH = "templates/ca_certificate.pdf"
-    output_path = f"CA_Letter_{name.replace(' ', '_')}.pdf"
+    output_path = _make_output_path(f"CA_Letter_{name.replace(' ', '_')}.pdf")
 
     # --- Content Preparation ---
     domain_text = f"""
@@ -345,5 +354,4 @@ Has successfully completed the Persevex Campus Representative Program from {issu
     # Step 2: Create the preview
     preview_path = _create_preview_from_pdf(output_path)
     return output_path, preview_path
-
 
