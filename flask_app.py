@@ -13,6 +13,7 @@ import razorpay_handler
 from email_sender import send_personalized_email
 import letter_service
 from config_loader import load_project_env
+import web_auth
 
 # Telegram Imports
 from telegram import ReplyKeyboardMarkup, Update, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
@@ -35,6 +36,7 @@ SECRET = "MySuperSecretPassword123"
 app = Flask(__name__, template_folder="web_templates")
 app.secret_key = os.getenv("FLASK_SECRET_KEY", SECRET)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+web_auth.register_auth_routes(app)
 
 (
     AWAITING_PAYMENT_CONFIRMATION,
@@ -494,13 +496,6 @@ def get_bot():
 # 4. WEB APP ROUTES
 # ==========================================
 
-WEB_APP_PASSWORD = os.getenv("WEB_APP_PASSWORD", SECRET)
-
-
-def login_required(route_func):
-    return route_func
-
-
 def clear_session_draft():
     draft = session.pop("web_draft", None)
     if not draft:
@@ -529,39 +524,14 @@ def build_dashboard_context():
     }
 
 
-@app.route("/", methods=["GET"])
-def web_index():
-    return redirect(url_for("web_dashboard"))
-
-
-@app.route("/login", methods=["GET", "POST"])
-def web_login():
-    if request.method == "POST":
-        password = request.form.get("password", "")
-        if password == WEB_APP_PASSWORD:
-            session["web_authenticated"] = True
-            return redirect(url_for("web_dashboard"))
-        flash("Incorrect password. Please try again.")
-    return render_template("login.html")
-
-
-@app.route("/logout")
-@login_required
-def web_logout():
-    clear_session_draft()
-    session.clear()
-    flash("You have been logged out.")
-    return redirect(url_for("web_login"))
-
-
 @app.route("/app", methods=["GET"])
-@login_required
+@web_auth.require_active_subscription
 def web_dashboard():
     return render_template("dashboard.html", **build_dashboard_context())
 
 
 @app.route("/app/preview", methods=["POST"])
-@login_required
+@web_auth.require_active_subscription
 def web_preview():
     letter_type = request.form.get("letter_type", "")
     form_data = request.form.to_dict(flat=True)
@@ -584,7 +554,7 @@ def web_preview():
 
 
 @app.route("/app/send", methods=["POST"])
-@login_required
+@web_auth.require_active_subscription
 def web_send():
     draft = session.get("web_draft")
     if not draft:
@@ -615,7 +585,7 @@ def web_send():
 
 
 @app.route("/app/clear", methods=["POST"])
-@login_required
+@web_auth.require_active_subscription
 def web_clear_draft():
     clear_session_draft()
     session.pop("web_form_values", None)
@@ -624,7 +594,7 @@ def web_clear_draft():
 
 
 @app.route("/app/preview-image", methods=["GET"])
-@login_required
+@web_auth.require_active_subscription
 def web_preview_image():
     draft = session.get("web_draft")
     if not draft:
@@ -638,7 +608,7 @@ def web_preview_image():
 
 
 @app.route("/app/bulk/start", methods=["POST"])
-@login_required
+@web_auth.require_active_subscription
 def web_bulk_start():
     letter_type = request.form.get("letter_type", "")
     upload = request.files.get("csv_file")
@@ -656,7 +626,7 @@ def web_bulk_start():
 
 
 @app.route("/app/bulk/status/<job_id>", methods=["GET"])
-@login_required
+@web_auth.require_active_subscription
 def web_bulk_status(job_id):
     job = bulk_service.get_bulk_job(job_id)
     if not job:
@@ -665,7 +635,7 @@ def web_bulk_status(job_id):
 
 
 @app.route("/app/bulk/failed/<job_id>", methods=["GET"])
-@login_required
+@web_auth.require_active_subscription
 def web_bulk_failed(job_id):
     try:
         csv_text = bulk_service.export_failed_rows(job_id)

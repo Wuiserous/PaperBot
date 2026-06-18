@@ -3,6 +3,7 @@
 import os
 import json
 import requests
+import tempfile
 from datetime import datetime
 from config_loader import load_project_env
 
@@ -11,7 +12,7 @@ load_project_env()
 # Your Google Apps Script Web App URL
 SCRIPT_URL = os.getenv('GOOGLE_SCRIPT_URL')
 # The local JSON file for caching user statuses
-CACHE_FILE = 'user_status_cache.json'
+CACHE_FILE = os.path.join(tempfile.gettempdir(), 'user_status_cache.json') if os.getenv("VERCEL") else 'user_status_cache.json'
 
 
 def _load_cache():
