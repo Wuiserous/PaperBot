@@ -5,6 +5,8 @@ bot_memory.pickle
 flask-local.log
 bulk_jobs.sqlite3
 bulk_jobs.sqlite3-*
+paperbot_web_drafts.sqlite3
+paperbot_web_drafts.sqlite3-*
 __pycache__/
 .vendor/
 *.pyc

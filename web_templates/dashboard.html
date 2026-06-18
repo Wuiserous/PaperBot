@@ -233,6 +233,12 @@
             justify-content: center;
         }
 
+        button:disabled,
+        .button:disabled {
+            cursor: wait;
+            opacity: 0.72;
+        }
+
         .primary {
             color: white;
             background: linear-gradient(135deg, var(--accent), var(--accent-dark));
@@ -382,7 +388,7 @@
                     {% endif %}
                 {% endwith %}
 
-                <form method="post" action="{{ url_for('web_preview') }}">
+                <form method="post" action="{{ url_for('web_preview') }}" id="previewForm">
                     <div class="mode-tabs">
                         <button class="mode-tab active" type="button" data-mode-button="single">Single</button>
                         <button class="mode-tab" type="button" data-mode-button="bulk">Bulk</button>
@@ -424,7 +430,7 @@
                         {% endfor %}
 
                         <div class="actions">
-                            <button class="primary" type="submit">Preview</button>
+                            <button class="primary" type="submit" id="previewButton">Preview</button>
                             <button class="secondary" type="submit" formaction="{{ url_for('web_clear_draft') }}">Clear</button>
                         </div>
                     </div>
@@ -504,9 +510,9 @@
                         {% endif %}
                     </div>
 
-                    <form method="post" action="{{ url_for('web_send') }}">
+                    <form method="post" action="{{ url_for('web_send') }}" id="sendForm">
                         <div class="actions">
-                            <button class="primary" type="submit">Send</button>
+                            <button class="primary" type="submit" id="sendButton">Send</button>
                             <button class="secondary" type="submit" formaction="{{ url_for('web_clear_draft') }}">Discard</button>
                         </div>
                     </form>
@@ -574,6 +580,10 @@
         }
 
         const bulkForm = document.querySelector('#bulkForm');
+        const previewForm = document.querySelector('#previewForm');
+        const previewButton = document.querySelector('#previewButton');
+        const sendForm = document.querySelector('#sendForm');
+        const sendButton = document.querySelector('#sendButton');
         const bulkStatus = document.querySelector('#bulkStatus');
         const bulkState = document.querySelector('#bulkState');
         const bulkCount = document.querySelector('#bulkCount');
@@ -583,6 +593,15 @@
         const bulkError = document.querySelector('#bulkError');
         const bulkExportWrap = document.querySelector('#bulkExportWrap');
         const bulkExportLink = document.querySelector('#bulkExportLink');
+
+        function setButtonLoading(button, loadingText) {
+            if (!button) {
+                return;
+            }
+            button.dataset.defaultText = button.textContent;
+            button.textContent = loadingText;
+            button.disabled = true;
+        }
 
         function renderBulkJob(job) {
             const total = job.total || 0;
@@ -632,6 +651,26 @@
                     return;
                 }
                 pollBulkJob(data.job_id);
+            });
+        }
+
+        if (previewForm && previewButton) {
+            previewForm.addEventListener('submit', (event) => {
+                const submitter = event.submitter;
+                if (submitter && submitter.formAction && submitter.formAction.includes('/app/clear')) {
+                    return;
+                }
+                setButtonLoading(previewButton, 'Generating...');
+            });
+        }
+
+        if (sendForm && sendButton) {
+            sendForm.addEventListener('submit', (event) => {
+                const submitter = event.submitter;
+                if (submitter && submitter.formAction && submitter.formAction.includes('/app/clear')) {
+                    return;
+                }
+                setButtonLoading(sendButton, 'Sending...');
             });
         }
     </script>

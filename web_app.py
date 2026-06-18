@@ -4,6 +4,7 @@ from datetime import timedelta
 
 from flask import Flask, Response, flash, jsonify, render_template, request, send_file, session, url_for
 from config_loader import load_project_env
+import draft_store
 import web_auth
 
 
@@ -21,12 +22,7 @@ web_auth.register_auth_routes(app)
 
 
 def clear_session_draft():
-    import letter_service
-
-    draft = session.pop("web_draft", None)
-    if not draft:
-        return
-    letter_service.cleanup_files(draft.get("pdf_path"), draft.get("preview_path"))
+    draft_store.delete_draft(session.pop("web_draft_id", None))
 
 
 def build_dashboard_context():
@@ -36,7 +32,7 @@ def build_dashboard_context():
     schema = letter_service.get_letter_schema()
     letter_types = letter_service.LETTER_TYPE_OPTIONS
     selected_type = session.get("selected_letter_type", letter_types[0][0])
-    draft = session.get("web_draft")
+    draft = draft_store.load_draft(session.get("web_draft_id"))
     draft_label = letter_service.get_letter_type_map().get(draft["letter_type"], "") if draft else ""
     form_values = session.get("web_form_values", {})
     preview_token = os.path.getmtime(draft["preview_path"]) if draft and os.path.exists(draft["preview_path"]) else "0"
@@ -73,7 +69,7 @@ def web_preview():
 
     try:
         preview_payload = letter_service.build_letter_preview(letter_type, form_data)
-        session["web_draft"] = preview_payload
+        session["web_draft_id"] = draft_store.save_draft(preview_payload, session.get("web_draft_id"))
         if letter_type == "internship_letter":
             session["web_form_values"] = preview_payload["form_data"]
         flash("Preview ready.", "success")
@@ -90,7 +86,7 @@ def web_send():
     import database_handler
     import letter_service
 
-    draft = session.get("web_draft")
+    draft = draft_store.load_draft(session.get("web_draft_id"))
     if not draft:
         flash("Generate a preview first.")
         return redirect(url_for("web_dashboard"))
@@ -130,7 +126,7 @@ def web_clear_draft():
 @app.route("/app/preview-image", methods=["GET"])
 @web_auth.require_active_subscription
 def web_preview_image():
-    draft = session.get("web_draft")
+    draft = draft_store.load_draft(session.get("web_draft_id"))
     if not draft:
         return ("Preview not found", 404)
 

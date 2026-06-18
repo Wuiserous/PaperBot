@@ -193,7 +193,7 @@ def register_auth_routes(app):
     def web_logout():
         session.pop("pending_login", None)
         session.pop("web_user", None)
-        session.pop("web_draft", None)
+        session.pop("web_draft_id", None)
         session.pop("web_form_values", None)
         session.pop("selected_letter_type", None)
         return redirect(url_for("web_login"))
