@@ -21,6 +21,32 @@ app.config["SESSION_COOKIE_SECURE"] = bool(os.getenv("VERCEL"))
 web_auth.register_auth_routes(app)
 
 
+def _get_form_values_by_type():
+    values = session.get("web_form_values_by_type", {})
+    return values if isinstance(values, dict) else {}
+
+
+def _remember_form_values(letter_type: str, form_data: dict) -> None:
+    values = _get_form_values_by_type()
+    values[letter_type] = dict(form_data)
+    session["web_form_values_by_type"] = values
+
+
+def _clear_form_values(letter_type: str | None = None) -> None:
+    if letter_type is None:
+        session.pop("web_form_values_by_type", None)
+        session.pop("web_form_values", None)
+        return
+
+    values = _get_form_values_by_type()
+    values.pop(letter_type, None)
+    if values:
+        session["web_form_values_by_type"] = values
+    else:
+        session.pop("web_form_values_by_type", None)
+    session.pop("web_form_values", None)
+
+
 def clear_session_draft():
     draft_store.delete_draft(session.pop("web_draft_id", None))
 
@@ -33,8 +59,10 @@ def build_dashboard_context():
     letter_types = letter_service.LETTER_TYPE_OPTIONS
     selected_type = session.get("selected_letter_type", letter_types[0][0])
     draft = draft_store.load_draft(session.get("web_draft_id"))
+    if draft:
+        draft["id"] = session.get("web_draft_id")
     draft_label = letter_service.get_letter_type_map().get(draft["letter_type"], "") if draft else ""
-    form_values = session.get("web_form_values", {})
+    form_values_by_type = _get_form_values_by_type()
     preview_token = os.path.getmtime(draft["preview_path"]) if draft and os.path.exists(draft["preview_path"]) else "0"
 
     return {
@@ -43,7 +71,8 @@ def build_dashboard_context():
         "selected_type": selected_type,
         "draft": draft,
         "draft_label": draft_label,
-        "form_values": form_values,
+        "draft_matches_selected": bool(draft and draft["letter_type"] == selected_type),
+        "form_values_by_type": form_values_by_type,
         "preview_token": preview_token,
         "bulk_header_formats": bulk_service.get_header_formats(),
     }
@@ -63,15 +92,17 @@ def web_preview():
     letter_type = request.form.get("letter_type", "")
     form_data = request.form.to_dict(flat=True)
     session["selected_letter_type"] = letter_type
-    session["web_form_values"] = form_data
-
-    clear_session_draft()
+    _remember_form_values(letter_type, form_data)
 
     try:
         preview_payload = letter_service.build_letter_preview(letter_type, form_data)
-        session["web_draft_id"] = draft_store.save_draft(preview_payload, session.get("web_draft_id"))
+        previous_draft_id = session.get("web_draft_id")
+        new_draft_id = draft_store.save_draft(preview_payload)
+        session["web_draft_id"] = new_draft_id
+        if previous_draft_id and previous_draft_id != new_draft_id:
+            draft_store.delete_draft(previous_draft_id)
         if letter_type == "internship_letter":
-            session["web_form_values"] = preview_payload["form_data"]
+            _remember_form_values(letter_type, preview_payload["form_data"])
         flash("Preview ready.", "success")
     except Exception as exc:
         logging.exception("Web preview generation failed")
@@ -86,10 +117,18 @@ def web_send():
     import database_handler
     import letter_service
 
-    draft = draft_store.load_draft(session.get("web_draft_id"))
+    requested_draft_id = request.form.get("draft_id")
+    active_draft_id = session.get("web_draft_id")
+    if requested_draft_id and requested_draft_id != active_draft_id:
+        flash("The staged preview changed. Please review the latest preview before sending.")
+        return redirect(url_for("web_dashboard"))
+
+    draft = draft_store.load_draft(active_draft_id)
     if not draft:
         flash("Generate a preview first.")
         return redirect(url_for("web_dashboard"))
+
+    session["selected_letter_type"] = draft["letter_type"]
 
     try:
         sent, recipient_data = letter_service.send_letter_from_preview(draft)
@@ -104,7 +143,6 @@ def web_send():
         if sent:
             flash(f"Sent to {recipient_data['name']}.", "success")
             clear_session_draft()
-            session.pop("web_form_values", None)
         else:
             flash(f"Email could not be sent to {recipient_data['name']}.")
     except Exception as exc:
@@ -117,8 +155,11 @@ def web_send():
 @app.route("/app/clear", methods=["POST"])
 @web_auth.require_active_subscription
 def web_clear_draft():
+    selected_type = session.get("selected_letter_type")
+    clear_scope = request.form.get("clear_scope", "all")
     clear_session_draft()
-    session.pop("web_form_values", None)
+    if clear_scope != "preview_only":
+        _clear_form_values(selected_type)
     flash("Cleared.")
     return redirect(url_for("web_dashboard"))
 

@@ -1,18 +1,23 @@
 # pdf_generator.py
 
-import fitz  # PyMuPDF
 import os
 import tempfile
+import uuid
 from datetime import datetime, timedelta
-from dateutil.relativedelta import relativedelta
-import qrcode
 import io
+import fitz  # PyMuPDF
+import qrcode
+from dateutil.relativedelta import relativedelta
+
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 def _make_output_path(filename: str) -> str:
-    if os.getenv("VERCEL"):
-        return os.path.join(tempfile.gettempdir(), filename)
-    return filename
+    stem, ext = os.path.splitext(filename)
+    unique_filename = f"{stem}_{uuid.uuid4().hex[:8]}{ext or '.pdf'}"
+    output_dir = tempfile.gettempdir() if os.getenv("VERCEL") else BASE_DIR
+    return os.path.join(output_dir, unique_filename)
 
 
 # --- HELPER FUNCTION FOR PREVIEW GENERATION ---
@@ -217,7 +222,7 @@ def generate_completion_certificate(name: str, issue_date: str, domain: str, ide
     """Generates the CA PDF (Landscape) with centered domain text and a QR Code."""
 
     TEMPLATE_PATH = "templates/completion_certificate.pdf"
-    output_path = _make_output_path(f"CA_Letter_{name.replace(' ', '_')}.pdf")
+    output_path = _make_output_path(f"Course_Certificate_{name.replace(' ', '_')}.pdf")
 
     # --- Content Preparation ---
     domain_text = f"This is to certify that the candidate has successfully completed internship in {domain}."
@@ -299,7 +304,7 @@ def ca_certificate(name: str, issue_date: str, create_preview: bool = True) -> t
     """Generates the CA PDF (Landscape) with centered domain text and a QR Code."""
 
     TEMPLATE_PATH = "templates/ca_certificate.pdf"
-    output_path = _make_output_path(f"CA_Letter_{name.replace(' ', '_')}.pdf")
+    output_path = _make_output_path(f"CA_Certificate_{name.replace(' ', '_')}.pdf")
 
     # --- Content Preparation ---
     domain_text = f"""

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PaperBot</title>
-    <link rel="icon" href="{{ url_for('static', filename='icons/favicon.svg') }}" type="image/svg+xml">
+    <link rel="icon" href="{{ url_for('static', filename='icons/favicon-16.png') }}" sizes="16x16" type="image/png">
     <link rel="icon" href="{{ url_for('static', filename='icons/favicon-32.png') }}" sizes="32x32" type="image/png">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
     <link rel="manifest" href="{{ url_for('static', filename='site.webmanifest') }}">
@@ -257,6 +257,23 @@
             background: white;
         }
 
+        .preview-status {
+            margin-bottom: 10px;
+            padding: 10px 12px;
+            border-radius: 14px;
+            border: 1px solid rgba(31, 106, 69, 0.18);
+            background: var(--success-soft);
+            color: var(--success);
+            display: grid;
+            gap: 4px;
+        }
+
+        .preview-status.mismatch {
+            border-color: rgba(174, 87, 49, 0.18);
+            background: var(--accent-soft);
+            color: var(--accent-dark);
+        }
+
         .preview-frame img {
             display: block;
             width: 100%;
@@ -288,6 +305,11 @@
             border-radius: 14px;
             border: 1px dashed rgba(93, 67, 47, 0.22);
             background: rgba(255, 255, 255, 0.55);
+            padding: 14px;
+            color: var(--muted);
+            display: grid;
+            place-items: center;
+            text-align: center;
         }
 
         .bulk-status {
@@ -418,7 +440,7 @@
                                                 id="{{ type_key }}_{{ field.name }}"
                                                 name="{{ field.name }}"
                                                 type="{{ field.type }}"
-                                                value="{{ form_values.get(field.name, '') if selected_type == type_key else '' }}"
+                                                value="{{ form_values_by_type.get(type_key, {}).get(field.name, '') }}"
                                                 {% if field.placeholder %}placeholder="{{ field.placeholder }}"{% endif %}
                                                 {% if field.required %}required{% endif %}
                                                 autocomplete="off"
@@ -431,7 +453,7 @@
 
                         <div class="actions">
                             <button class="primary" type="submit" id="previewButton">Preview</button>
-                            <button class="secondary" type="submit" formaction="{{ url_for('web_clear_draft') }}">Clear</button>
+                            <button class="secondary" type="submit" formaction="{{ url_for('web_clear_draft') }}" name="clear_scope" value="all">Clear</button>
                         </div>
                     </div>
                 </form>
@@ -468,6 +490,15 @@
 
             <aside class="card">
                 {% if draft %}
+                    <div class="preview-status {% if not draft_matches_selected %}mismatch{% endif %}">
+                        <strong>Preview ready for {{ draft_label }}</strong>
+                        {% if draft_matches_selected %}
+                            <span>This is the exact document that will be sent when you click send.</span>
+                        {% else %}
+                            <span>You are editing {{ schema[selected_type].short_label }}, but the staged preview is still {{ draft_label }}. Generate a new preview to replace it.</span>
+                        {% endif %}
+                    </div>
+
                     <div class="preview-frame">
                         <img src="{{ url_for('web_preview_image') }}?v={{ preview_token }}" alt="Letter preview">
                     </div>
@@ -511,13 +542,14 @@
                     </div>
 
                     <form method="post" action="{{ url_for('web_send') }}" id="sendForm">
+                        <input type="hidden" name="draft_id" value="{{ draft.id }}">
                         <div class="actions">
-                            <button class="primary" type="submit" id="sendButton">Send</button>
-                            <button class="secondary" type="submit" formaction="{{ url_for('web_clear_draft') }}">Discard</button>
+                            <button class="primary" type="submit" id="sendButton">Send This Preview</button>
+                            <button class="secondary" type="submit" formaction="{{ url_for('web_clear_draft') }}" name="clear_scope" value="preview_only">Discard Preview</button>
                         </div>
                     </form>
                 {% else %}
-                    <div class="empty"></div>
+                    <div class="empty">Generate a preview to review the final document before sending.</div>
                 {% endif %}
             </aside>
         </div>
