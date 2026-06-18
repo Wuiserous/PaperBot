@@ -60,6 +60,10 @@
             background: linear-gradient(135deg, var(--accent), var(--accent-dark));
             cursor: pointer;
         }
+        button:disabled {
+            cursor: wait;
+            opacity: 0.72;
+        }
         .muted { color: var(--muted); margin: 0 0 14px; }
         .message {
             display: none;
@@ -82,13 +86,13 @@
             <input id="name" name="name" autocomplete="name" required>
             <label for="email">Email</label>
             <input id="email" name="email" type="email" autocomplete="email" required>
-            <button type="submit">Send OTP</button>
+            <button type="submit" id="sendOtpButton">Send OTP</button>
         </form>
 
         <form class="grid otp-step" id="otpForm">
             <label for="otp">OTP</label>
             <input id="otp" name="otp" inputmode="numeric" maxlength="6" autocomplete="one-time-code" required>
-            <button type="submit">Continue</button>
+            <button type="submit" id="verifyOtpButton">Continue</button>
         </form>
     </main>
 
@@ -96,6 +100,8 @@
         const message = document.querySelector('#message');
         const requestForm = document.querySelector('#requestForm');
         const otpForm = document.querySelector('#otpForm');
+        const sendOtpButton = document.querySelector('#sendOtpButton');
+        const verifyOtpButton = document.querySelector('#verifyOtpButton');
 
         function showMessage(text) {
             message.textContent = text;
@@ -115,8 +121,21 @@
             return data;
         }
 
+        function setButtonLoading(button, isLoading, loadingText) {
+            if (isLoading) {
+                button.dataset.defaultText = button.textContent;
+                button.textContent = loadingText;
+                button.disabled = true;
+                return;
+            }
+
+            button.textContent = button.dataset.defaultText || button.textContent;
+            button.disabled = false;
+        }
+
         requestForm.addEventListener('submit', async (event) => {
             event.preventDefault();
+            setButtonLoading(sendOtpButton, true, 'Sending...');
             try {
                 await postJson('/auth/request-otp', {
                     name: requestForm.name.value,
@@ -127,16 +146,19 @@
                 showMessage('OTP sent.');
             } catch (error) {
                 showMessage(error.message);
+                setButtonLoading(sendOtpButton, false);
             }
         });
 
         otpForm.addEventListener('submit', async (event) => {
             event.preventDefault();
+            setButtonLoading(verifyOtpButton, true, 'Checking...');
             try {
                 const data = await postJson('/auth/verify-otp', { otp: otpForm.otp.value });
                 window.location.href = data.redirect;
             } catch (error) {
                 showMessage(error.message);
+                setButtonLoading(verifyOtpButton, false);
             }
         });
     </script>
