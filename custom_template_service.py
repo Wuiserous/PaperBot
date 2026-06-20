@@ -14,7 +14,8 @@ import pdf_generator
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-STORE_DIR = os.path.join(BASE_DIR, "custom_templates")
+RUNTIME_DIR = tempfile.gettempdir() if os.getenv("VERCEL") else BASE_DIR
+STORE_DIR = os.path.join(RUNTIME_DIR, "custom_templates")
 ASSET_DIR = os.path.join(STORE_DIR, "assets")
 PREVIEW_DIR = os.path.join(STORE_DIR, "previews")
 DB_PATH = os.path.join(STORE_DIR, "custom_templates.sqlite3")
