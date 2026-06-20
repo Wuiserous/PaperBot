@@ -20,3 +20,6 @@ Internship_Letter_*.pdf
 Internship_Letter_*.png
 Offer_Letter_*.pdf
 Offer_Letter_*.png
+custom_templates/assets/
+custom_templates/previews/
+custom_templates/*.sqlite3

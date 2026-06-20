@@ -7,6 +7,7 @@ from flask import Flask, Response, flash, jsonify, redirect, render_template, re
 from config_loader import load_project_env
 import draft_store
 import web_auth
+from template_builder_web import register_template_builder_routes
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -20,6 +21,7 @@ app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=45)
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["SESSION_COOKIE_SECURE"] = bool(os.getenv("VERCEL"))
 web_auth.register_auth_routes(app)
+register_template_builder_routes(app)
 
 
 def _get_form_values_by_type():

@@ -206,6 +206,12 @@
             font-size: 1.08rem;
         }
 
+        .section-tools {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
         .mode-tabs {
             display: inline-grid;
             grid-template-columns: repeat(2, 1fr);
@@ -557,6 +563,12 @@
                 width: 100%;
             }
 
+            .section-tools {
+                width: 100%;
+                flex-direction: column;
+                align-items: stretch;
+            }
+
             .profile-wrap {
                 align-self: auto;
             }
@@ -641,9 +653,12 @@
 
                     <div class="section-head">
                         <h2>Create</h2>
-                        <div class="mode-tabs">
-                            <button class="mode-tab active" type="button" data-mode-button="single">Single</button>
-                            <button class="mode-tab" type="button" data-mode-button="bulk">Bulk</button>
+                        <div class="section-tools">
+                            <a class="button secondary" href="{{ url_for('web_template_builder') }}">Templates</a>
+                            <div class="mode-tabs">
+                                <button class="mode-tab active" type="button" data-mode-button="single">Single</button>
+                                <button class="mode-tab" type="button" data-mode-button="bulk">Bulk</button>
+                            </div>
                         </div>
                     </div>
 

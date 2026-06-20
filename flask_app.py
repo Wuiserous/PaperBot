@@ -17,6 +17,7 @@ from email_sender import send_personalized_email
 import letter_service
 from config_loader import load_project_env
 import web_auth
+from template_builder_web import register_template_builder_routes
 
 # Telegram Imports
 from telegram import ReplyKeyboardMarkup, Update, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
@@ -43,6 +44,7 @@ app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["SESSION_COOKIE_SECURE"] = bool(os.getenv("VERCEL"))
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 web_auth.register_auth_routes(app)
+register_template_builder_routes(app)
 
 (
     AWAITING_PAYMENT_CONFIRMATION,
