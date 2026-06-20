@@ -836,8 +836,12 @@
                     return;
                 }
 
-                fieldKey.value = field.key;
-                fieldText.value = field.text;
+                if (document.activeElement !== fieldKey) {
+                    fieldKey.value = field.key || '';
+                }
+                if (document.activeElement !== fieldText) {
+                    fieldText.value = field.text || '';
+                }
                 fieldType.value = field.type;
                 fieldSourceText.value = field.source ? field.source.text : 'Manual box';
                 fieldMeta.textContent = field.source
@@ -938,16 +942,23 @@
             function updateSelectedField() {
                 const field = selectedField();
                 if (!field) return;
-                field.key = safeKey(fieldKey.value, field.key);
+                field.key = fieldKey.value;
                 field.text = fieldText.value;
-                setStatus(`Editing placeholder: ${field.key}`);
-                renderAll();
+                setStatus(`Editing placeholder${field.key ? `: ${field.key}` : ''}`);
+                renderPlaceholders();
+                renderList();
+                renderSelectionStrip();
             }
 
             function savePayload() {
                 saveTemplateName.value = editorTemplateName.value.trim() || 'Untitled Template';
-                saveFieldsJson.value = JSON.stringify(fields);
-                templateSnapshot.fields = fields;
+                const sanitizedFields = fields.map((field, index) => ({
+                    ...field,
+                    key: safeKey(field.key, `field_${index + 1}`),
+                }));
+                fields = sanitizedFields;
+                saveFieldsJson.value = JSON.stringify(sanitizedFields);
+                templateSnapshot.fields = sanitizedFields;
                 templateSnapshot.name = saveTemplateName.value;
                 templateSnapshotJson.value = JSON.stringify(templateSnapshot);
             }
