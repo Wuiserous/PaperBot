@@ -313,6 +313,39 @@
             gap: 8px;
         }
 
+        .selection-strip {
+            display: grid;
+            gap: 6px;
+            padding: 12px;
+            border-radius: 16px;
+            border: 1px solid rgba(37, 95, 185, 0.18);
+            background: rgba(37, 95, 185, 0.05);
+        }
+
+        .selection-strip.active {
+            border-color: rgba(37, 95, 185, 0.38);
+            background: rgba(37, 95, 185, 0.10);
+        }
+
+        .selection-label {
+            color: var(--muted);
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
+        }
+
+        .selection-text {
+            font-size: 1rem;
+            line-height: 1.35;
+            word-break: break-word;
+        }
+
+        .selection-meta {
+            color: var(--muted);
+            font-size: 0.84rem;
+            line-height: 1.35;
+        }
+
         .render-preview {
             overflow: hidden;
             border-radius: 16px;
@@ -324,6 +357,25 @@
         .render-preview img {
             width: 100%;
             height: auto;
+        }
+
+        .placeholder-chip {
+            display: grid;
+            gap: 2px;
+            align-items: start;
+        }
+
+        .placeholder-chip strong,
+        .placeholder-chip span {
+            display: block;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .placeholder-chip span {
+            color: var(--muted);
+            font-size: 0.8rem;
         }
 
         .meta {
@@ -394,7 +446,7 @@
                         <button class="primary" type="submit">Create</button>
                     </form>
 
-                    <div class="hint">Tap one word or drag across words.</div>
+                    <div class="hint">Tap one word. Drag across words for a group.</div>
 
                     <h2 class="section-title">Saved</h2>
                     <div class="template-list">
@@ -424,7 +476,11 @@
                             <button class="primary" type="button" id="saveTemplateButton">Save</button>
                         </div>
 
-                        <div class="hint" id="liveHint">Tap one word or drag across words to create a placeholder.</div>
+                        <div class="selection-strip" id="selectionStrip">
+                            <div class="selection-label">Selection</div>
+                            <div class="selection-text" id="selectionText">Tap one word. Drag across words for a group.</div>
+                            <div class="selection-meta" id="selectionMeta">The placeholder will appear on the right as soon as you release.</div>
+                        </div>
 
                         <div class="stage-wrap">
                             <div class="stage">
@@ -445,7 +501,7 @@
                         <h2 class="section-title">Placeholders</h2>
                         <div class="placeholder-list" id="placeholderList"></div>
 
-                        <div id="inspectorEmpty" class="empty-state">Select a placeholder to edit it.</div>
+                        <div id="inspectorEmpty" class="empty-state">Create or select a placeholder to edit it.</div>
 
                         <div id="inspectorFields" class="template-list hidden">
                             <div class="field">
@@ -503,7 +559,9 @@
             const saveTemplateName = document.querySelector('#saveTemplateName');
             const saveFieldsJson = document.querySelector('#saveFieldsJson');
             const editorTemplateName = document.querySelector('#editorTemplateName');
-            const liveHint = document.querySelector('#liveHint');
+            const selectionStrip = document.querySelector('#selectionStrip');
+            const selectionText = document.querySelector('#selectionText');
+            const selectionMeta = document.querySelector('#selectionMeta');
 
             const inspectorEmpty = document.querySelector('#inspectorEmpty');
             const inspectorFields = document.querySelector('#inspectorFields');
@@ -515,6 +573,7 @@
 
             let dragState = null;
             let tokenSelection = [];
+            let statusMessage = 'Tap one word. Drag across words for a group.';
 
             function safeKey(text, fallback) {
                 const key = String(text || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
@@ -585,6 +644,18 @@
                 };
             }
 
+            function setStatus(message) {
+                statusMessage = message;
+            }
+
+            function describeSelection() {
+                const selection = buildSelectionFromTokens(tokenSelection);
+                if (!selection) {
+                    return null;
+                }
+                return selection.text;
+            }
+
             function createFieldFromTokens(tokenIds) {
                 const source = buildSelectionFromTokens(tokenIds);
                 if (!source) {
@@ -595,6 +666,7 @@
                 if (existingIndex !== -1) {
                     selectedFieldIndex = existingIndex;
                     tokenSelection = [];
+                    setStatus(`Selected existing placeholder: ${fields[existingIndex].key}`);
                     renderAll();
                     return;
                 }
@@ -608,6 +680,7 @@
                 });
                 selectedFieldIndex = fields.length - 1;
                 tokenSelection = [];
+                setStatus(`Created placeholder: ${fields[selectedFieldIndex].key}`);
                 renderAll();
             }
 
@@ -627,12 +700,14 @@
                 });
                 selectedFieldIndex = fields.length - 1;
                 tokenSelection = [];
+                setStatus(`Added manual placeholder: ${fields[selectedFieldIndex].key}`);
                 renderAll();
             }
 
             function beginTokenSelection(token) {
                 tokenSelection = [token.id];
                 selectedFieldIndex = null;
+                setStatus('Selecting text...');
                 renderAll();
             }
 
@@ -672,6 +747,7 @@
                     zone.style.width = `${Math.max(8, (span.bbox[2] - span.bbox[0]) * scale)}px`;
                     zone.style.height = `${Math.max(8, (span.bbox[3] - span.bbox[1]) * scale)}px`;
                     zone.title = span.text;
+                    zone.dataset.tokenId = span.id;
                     zone.addEventListener('pointerdown', (event) => {
                         event.preventDefault();
                         beginTokenSelection(span);
@@ -737,10 +813,12 @@
                     const button = document.createElement('button');
                     button.type = 'button';
                     button.className = `button secondary placeholder-chip${selectedFieldIndex === index ? ' active' : ''}`;
-                    button.textContent = field.key;
+                    const sourceText = field.source ? field.source.text : 'Manual placeholder';
+                    button.innerHTML = `<strong>${field.key}</strong><span>${sourceText}</span>`;
                     button.addEventListener('click', () => {
                         selectedFieldIndex = index;
                         tokenSelection = [];
+                        setStatus(`Selected placeholder: ${field.key}`);
                         renderAll();
                     });
                     placeholderList.appendChild(button);
@@ -752,9 +830,6 @@
                 inspectorEmpty.classList.toggle('hidden', Boolean(field));
                 inspectorFields.classList.toggle('hidden', !field);
                 if (!field) {
-                    liveHint.textContent = tokenSelection.length > 1
-                        ? `Release to create placeholder from "${buildSelectionFromTokens(tokenSelection)?.text || ''}".`
-                        : 'Tap one word or drag across words.';
                     return;
                 }
 
@@ -765,9 +840,30 @@
                 fieldMeta.textContent = field.source
                     ? `Selected ${field.source.token_ids?.length || 1} word${(field.source.token_ids?.length || 1) > 1 ? 's' : ''} from the PDF.`
                     : 'Manual box fallback.';
-                liveHint.textContent = field.source
-                    ? 'Edit the placeholder name or preview value, then preview and save.'
-                    : 'Drag the manual box where you need it, then preview and save.';
+            }
+
+            function renderSelectionStrip() {
+                const selectedPhrase = describeSelection();
+                const field = selectedField();
+                const activeSelection = Boolean(selectedPhrase);
+                selectionStrip.classList.toggle('active', activeSelection);
+
+                if (activeSelection) {
+                    selectionText.textContent = selectedPhrase;
+                    selectionMeta.textContent = `${tokenSelection.length} word${tokenSelection.length > 1 ? 's' : ''} selected. Release to create the placeholder.`;
+                    return;
+                }
+
+                if (field) {
+                    selectionText.textContent = field.source ? field.source.text : field.text;
+                    selectionMeta.textContent = field.source
+                        ? `Editing placeholder "${field.key}". Change the name or preview value, then Save.`
+                        : `Editing manual placeholder "${field.key}". Drag it if needed, then Save.`;
+                    return;
+                }
+
+                selectionText.textContent = statusMessage;
+                selectionMeta.textContent = 'The placeholder will appear on the right as soon as you release.';
             }
 
             function renderAll() {
@@ -776,6 +872,7 @@
                 renderPlaceholders();
                 renderList();
                 renderInspector();
+                renderSelectionStrip();
             }
 
             function startDrag(event, index) {
@@ -783,6 +880,7 @@
                 tokenSelection = [];
                 const field = fields[index];
                 if (field.origin !== 'manual') {
+                    setStatus(`Selected placeholder: ${field.key}`);
                     renderAll();
                     return;
                 }
@@ -798,10 +896,21 @@
                     scale: getScale(),
                 };
                 event.currentTarget.setPointerCapture(event.pointerId);
+                setStatus(`Moving placeholder: ${field.key}`);
                 renderAll();
             }
 
             function onPointerMove(event) {
+                if (tokenSelection.length && !dragState) {
+                    const hovered = document.elementFromPoint(event.clientX, event.clientY)?.closest('.source-zone');
+                    if (hovered?.dataset.tokenId) {
+                        const token = getToken(hovered.dataset.tokenId);
+                        if (token) {
+                            extendTokenSelection(token);
+                        }
+                    }
+                }
+
                 if (!dragState) return;
                 const field = fields[dragState.index];
                 const dx = (event.clientX - dragState.startX) / dragState.scale;
@@ -828,6 +937,7 @@
                 if (!field) return;
                 field.key = safeKey(fieldKey.value, field.key);
                 field.text = fieldText.value;
+                setStatus(`Editing placeholder: ${field.key}`);
                 renderAll();
             }
 
@@ -840,9 +950,11 @@
 
             document.querySelector('#deleteField').addEventListener('click', () => {
                 if (selectedFieldIndex === null) return;
+                const removedKey = fields[selectedFieldIndex].key;
                 fields.splice(selectedFieldIndex, 1);
                 selectedFieldIndex = fields.length ? Math.min(selectedFieldIndex, fields.length - 1) : null;
                 tokenSelection = [];
+                setStatus(`Removed placeholder: ${removedKey}`);
                 renderAll();
             });
 
