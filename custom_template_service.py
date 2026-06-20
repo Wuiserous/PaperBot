@@ -97,12 +97,14 @@ def _normalize_source(source: dict[str, Any] | None, page_width: float, page_hei
     return {
         "span_id": _normalize_text(source.get("span_id"), ""),
         "text": _normalize_text(source.get("text"), ""),
+        "replace_text": _normalize_text(source.get("replace_text"), _normalize_text(source.get("text"), "")),
         "bbox": [round(x0, 1), round(y0, 1), round(x1, 1), round(y1, 1)],
         "font_key": _normalize_text(source.get("font_key"), ""),
         "font_label": font_label,
         "font_alias": _normalize_text(source.get("font_alias"), _safe_slug(font_label, "font")),
         "font_size": round(float(source.get("font_size", 12) or 12), 2),
         "color": int(source.get("color", 0) or 0),
+        "chars": source.get("chars") if isinstance(source.get("chars"), list) else [],
     }
 
 
@@ -143,6 +145,14 @@ def _extract_text_spans(pdf_path: str) -> list[dict[str, Any]]:
                             "font_size": round(float(span.get("size", 12) or 12), 2),
                             "color": int(span.get("color", 0) or 0),
                             "flags": int(span.get("flags", 0) or 0),
+                            "chars": [
+                                {
+                                    "c": str(char.get("c") or ""),
+                                    "bbox": [round(float(value), 1) for value in char.get("bbox", [])] if len(char.get("bbox", [])) == 4 else None,
+                                }
+                                for char in (span.get("chars") or [])
+                                if str(char.get("c") or "") and len(char.get("bbox", [])) == 4
+                            ],
                             "block_index": block_index,
                             "line_index": line_index,
                             "span_index": span_index,
@@ -221,6 +231,28 @@ def _sanitize_fields(fields: list[dict[str, Any]], page_width: float, page_heigh
         if isinstance(field, dict):
             cleaned.append(_sanitize_field(field, index, page_width, page_height))
     return cleaned
+
+
+def _resolve_source_rect(source: dict[str, Any]) -> fitz.Rect:
+    replace_text = _normalize_text(source.get("replace_text"), source.get("text", ""))
+    source_text = _normalize_text(source.get("text"), "")
+    chars = source.get("chars") or []
+
+    if replace_text and source_text and chars:
+        start_index = source_text.find(replace_text)
+        if start_index != -1:
+            end_index = start_index + len(replace_text)
+            selected = chars[start_index:end_index]
+            selected_boxes = [char.get("bbox") for char in selected if isinstance(char.get("bbox"), list) and len(char.get("bbox")) == 4]
+            if selected_boxes:
+                x0 = min(box[0] for box in selected_boxes)
+                y0 = min(box[1] for box in selected_boxes)
+                x1 = max(box[2] for box in selected_boxes)
+                y1 = max(box[3] for box in selected_boxes)
+                return fitz.Rect(x0, y0, x1, y1)
+
+    bbox = source.get("bbox") or [0, 0, 0, 0]
+    return fitz.Rect(bbox)
 
 
 def _template_data_url(path: str) -> str | None:
@@ -382,7 +414,7 @@ def render_check(owner_user_id: int, template_id: str, fields: list[dict[str, An
             font_name = field["fontname"]
             color = (0, 0, 0)
             if source:
-                render_rect = fitz.Rect(source["bbox"])
+                render_rect = _resolve_source_rect(source)
                 page.draw_rect(render_rect, color=(1, 1, 1), fill=(1, 1, 1), overlay=True)
                 color = _int_color_to_rgb(source.get("color"))
                 font_bytes = embedded_fonts.get(source.get("font_key")) or embedded_fonts.get(source.get("font_label"))
