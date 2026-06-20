@@ -105,7 +105,22 @@ def _normalize_source(source: dict[str, Any] | None, page_width: float, page_hei
         "font_size": round(float(source.get("font_size", 12) or 12), 2),
         "color": int(source.get("color", 0) or 0),
         "chars": source.get("chars") if isinstance(source.get("chars"), list) else [],
+        "token_ids": source.get("token_ids") if isinstance(source.get("token_ids"), list) else [],
+        "line_id": _normalize_text(source.get("line_id"), ""),
+        "use_bbox_only": bool(source.get("use_bbox_only")),
     }
+
+
+def _merge_char_boxes(chars: list[dict[str, Any]]) -> list[float]:
+    boxes = [char.get("bbox") for char in chars if isinstance(char.get("bbox"), list) and len(char.get("bbox")) == 4]
+    if not boxes:
+        return [0.0, 0.0, 0.0, 0.0]
+    return [
+        round(min(box[0] for box in boxes), 1),
+        round(min(box[1] for box in boxes), 1),
+        round(max(box[2] for box in boxes), 1),
+        round(max(box[3] for box in boxes), 1),
+    ]
 
 
 def _extract_text_spans(pdf_path: str) -> list[dict[str, Any]]:
@@ -120,45 +135,75 @@ def _extract_text_spans(pdf_path: str) -> list[dict[str, Any]]:
             font_map[str(base_name)] = (int(xref), str(resource_name))
 
         spans: list[dict[str, Any]] = []
-        raw = page.get_text("dict")
+        raw = page.get_text("rawdict")
         counter = 0
         for block_index, block in enumerate(raw.get("blocks", [])):
             for line_index, line in enumerate(block.get("lines", [])):
+                line_id = f"line-{block_index}-{line_index}"
                 for span_index, span in enumerate(line.get("spans", [])):
-                    text = _normalize_text(span.get("text"), "")
-                    if not text:
-                        continue
-                    bbox = span.get("bbox")
-                    if not bbox or len(bbox) != 4:
+                    chars = [
+                        {
+                            "c": str(char.get("c") or ""),
+                            "bbox": [round(float(value), 1) for value in char.get("bbox", [])] if len(char.get("bbox", [])) == 4 else None,
+                        }
+                        for char in (span.get("chars") or [])
+                        if str(char.get("c") or "") and len(char.get("bbox", [])) == 4
+                    ]
+                    if not chars:
                         continue
                     font_label = str(span.get("font") or "")
                     font_xref, font_key = font_map.get(font_label, font_map.get(font_label.split("+", 1)[-1], (0, "")))
-                    spans.append(
-                        {
-                            "id": f"span-{counter}",
-                            "page": 0,
-                            "text": text,
-                            "bbox": [round(float(value), 1) for value in bbox],
-                            "font_label": font_label,
-                            "font_key": font_key,
-                            "font_xref": int(font_xref or 0),
-                            "font_size": round(float(span.get("size", 12) or 12), 2),
-                            "color": int(span.get("color", 0) or 0),
-                            "flags": int(span.get("flags", 0) or 0),
-                            "chars": [
-                                {
-                                    "c": str(char.get("c") or ""),
-                                    "bbox": [round(float(value), 1) for value in char.get("bbox", [])] if len(char.get("bbox", [])) == 4 else None,
-                                }
-                                for char in (span.get("chars") or [])
-                                if str(char.get("c") or "") and len(char.get("bbox", [])) == 4
-                            ],
-                            "block_index": block_index,
-                            "line_index": line_index,
-                            "span_index": span_index,
-                        }
-                    )
-                    counter += 1
+                    word_chars: list[dict[str, Any]] = []
+                    for char in chars:
+                        if char["c"].isspace():
+                            if word_chars:
+                                word_text = "".join(item["c"] for item in word_chars)
+                                spans.append(
+                                    {
+                                        "id": f"span-{counter}",
+                                        "page": 0,
+                                        "text": word_text,
+                                        "bbox": _merge_char_boxes(word_chars),
+                                        "font_label": font_label,
+                                        "font_key": font_key,
+                                        "font_xref": int(font_xref or 0),
+                                        "font_size": round(float(span.get("size", 12) or 12), 2),
+                                        "color": int(span.get("color", 0) or 0),
+                                        "flags": int(span.get("flags", 0) or 0),
+                                        "chars": word_chars[:],
+                                        "line_id": line_id,
+                                        "block_index": block_index,
+                                        "line_index": line_index,
+                                        "span_index": span_index,
+                                    }
+                                )
+                                counter += 1
+                                word_chars = []
+                            continue
+                        word_chars.append(char)
+
+                    if word_chars:
+                        word_text = "".join(item["c"] for item in word_chars)
+                        spans.append(
+                            {
+                                "id": f"span-{counter}",
+                                "page": 0,
+                                "text": word_text,
+                                "bbox": _merge_char_boxes(word_chars),
+                                "font_label": font_label,
+                                "font_key": font_key,
+                                "font_xref": int(font_xref or 0),
+                                "font_size": round(float(span.get("size", 12) or 12), 2),
+                                "color": int(span.get("color", 0) or 0),
+                                "flags": int(span.get("flags", 0) or 0),
+                                "chars": word_chars[:],
+                                "line_id": line_id,
+                                "block_index": block_index,
+                                "line_index": line_index,
+                                "span_index": span_index,
+                            }
+                        )
+                        counter += 1
         return spans
     finally:
         doc.close()
@@ -234,6 +279,10 @@ def _sanitize_fields(fields: list[dict[str, Any]], page_width: float, page_heigh
 
 
 def _resolve_source_rect(source: dict[str, Any]) -> fitz.Rect:
+    if source.get("use_bbox_only"):
+        bbox = source.get("bbox") or [0, 0, 0, 0]
+        return fitz.Rect(bbox)
+
     replace_text = _normalize_text(source.get("replace_text"), source.get("text", ""))
     source_text = _normalize_text(source.get("text"), "")
     chars = source.get("chars") or []

@@ -232,6 +232,7 @@
         .overlay {
             position: absolute;
             inset: 0;
+            pointer-events: none;
         }
 
         .source-zone {
@@ -240,6 +241,7 @@
             background: rgba(37, 95, 185, 0.08);
             border-radius: 8px;
             cursor: pointer;
+            pointer-events: auto;
         }
 
         .source-zone:hover,
@@ -259,6 +261,7 @@
             background: rgba(184, 106, 67, 0.14);
             border-radius: 9px;
             overflow: hidden;
+            pointer-events: auto;
         }
 
         .placeholder-zone.selected {
@@ -391,7 +394,7 @@
                         <button class="primary" type="submit">Create</button>
                     </form>
 
-                    <div class="hint">Click any blue text in the preview. A placeholder is created instantly.</div>
+                    <div class="hint">Tap one word or drag across words.</div>
 
                     <h2 class="section-title">Saved</h2>
                     <div class="template-list">
@@ -421,7 +424,7 @@
                             <button class="primary" type="button" id="saveTemplateButton">Save</button>
                         </div>
 
-                        <div class="hint" id="liveHint">Click blue text to create a placeholder. Click an amber placeholder to edit it.</div>
+                        <div class="hint" id="liveHint">Tap one word or drag across words to create a placeholder.</div>
 
                         <div class="stage-wrap">
                             <div class="stage">
@@ -452,10 +455,6 @@
                             <div class="field">
                                 <label for="fieldText">Preview value</label>
                                 <input id="fieldText" type="text" autocomplete="off">
-                            </div>
-                            <div class="field">
-                                <label for="fieldReplaceText">Text to replace in PDF</label>
-                                <input id="fieldReplaceText" type="text" autocomplete="off">
                             </div>
                             <div class="field">
                                 <label for="fieldType">Mode</label>
@@ -510,12 +509,12 @@
             const inspectorFields = document.querySelector('#inspectorFields');
             const fieldKey = document.querySelector('#fieldKey');
             const fieldText = document.querySelector('#fieldText');
-            const fieldReplaceText = document.querySelector('#fieldReplaceText');
             const fieldType = document.querySelector('#fieldType');
             const fieldSourceText = document.querySelector('#fieldSourceText');
             const fieldMeta = document.querySelector('#fieldMeta');
 
             let dragState = null;
+            let tokenSelection = [];
 
             function safeKey(text, fallback) {
                 const key = String(text || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
@@ -544,33 +543,71 @@
                 return selectedFieldIndex === null ? null : fields[selectedFieldIndex];
             }
 
-            function createFieldFromSpan(span) {
-                const existingIndex = fields.findIndex((field) => field.source && field.source.span_id === span.id);
+            function getToken(tokenId) {
+                return spans.find((item) => item.id === tokenId) || null;
+            }
+
+            function sameTokens(a = [], b = []) {
+                return a.length === b.length && a.every((value, index) => value === b[index]);
+            }
+
+            function buildSelectionFromTokens(tokenIds) {
+                const tokens = tokenIds.map(getToken).filter(Boolean);
+                if (!tokens.length) {
+                    return null;
+                }
+
+                const chars = [];
+                tokens.forEach((token, index) => {
+                    chars.push(...(token.chars || []));
+                    if (index < tokens.length - 1) {
+                        chars.push({ c: " ", bbox: null });
+                    }
+                });
+
+                return {
+                    token_ids: tokenIds,
+                    line_id: tokens[0].line_id || "",
+                    text: tokens.map((token) => token.text).join(" "),
+                    bbox: [
+                        Math.min(...tokens.map((token) => token.bbox[0])),
+                        Math.min(...tokens.map((token) => token.bbox[1])),
+                        Math.max(...tokens.map((token) => token.bbox[2])),
+                        Math.max(...tokens.map((token) => token.bbox[3])),
+                    ].map((value) => Math.round(value * 10) / 10),
+                    font_key: tokens[0].font_key,
+                    font_label: tokens[0].font_label,
+                    font_alias: safeKey(tokens[0].font_label, 'font'),
+                    font_size: tokens[0].font_size,
+                    color: tokens[0].color,
+                    chars,
+                    use_bbox_only: true,
+                };
+            }
+
+            function createFieldFromTokens(tokenIds) {
+                const source = buildSelectionFromTokens(tokenIds);
+                if (!source) {
+                    return;
+                }
+
+                const existingIndex = fields.findIndex((field) => field.source && sameTokens(field.source.token_ids || [], tokenIds));
                 if (existingIndex !== -1) {
                     selectedFieldIndex = existingIndex;
+                    tokenSelection = [];
                     renderAll();
                     return;
                 }
 
                 fields.push({
                     origin: 'extracted',
-                    type: 'Text from PDF',
-                    key: safeKey(span.text, `field_${fields.length + 1}`),
-                    text: span.text,
-                    source: {
-                        span_id: span.id,
-                        text: span.text,
-                        replace_text: span.text,
-                        bbox: span.bbox,
-                        font_key: span.font_key,
-                        font_label: span.font_label,
-                        font_alias: safeKey(span.font_label, 'font'),
-                        font_size: span.font_size,
-                        color: span.color,
-                        chars: span.chars || [],
-                    },
+                    type: 'Selected PDF text',
+                    key: safeKey(source.text, `field_${fields.length + 1}`),
+                    text: source.text,
+                    source,
                 });
                 selectedFieldIndex = fields.length - 1;
+                tokenSelection = [];
                 renderAll();
             }
 
@@ -589,6 +626,32 @@
                     align: 0,
                 });
                 selectedFieldIndex = fields.length - 1;
+                tokenSelection = [];
+                renderAll();
+            }
+
+            function beginTokenSelection(token) {
+                tokenSelection = [token.id];
+                selectedFieldIndex = null;
+                renderAll();
+            }
+
+            function extendTokenSelection(token) {
+                if (!tokenSelection.length) {
+                    return;
+                }
+                const firstToken = getToken(tokenSelection[0]);
+                if (!firstToken || firstToken.line_id !== token.line_id) {
+                    return;
+                }
+                const lineTokens = spans.filter((item) => item.line_id === token.line_id);
+                const firstIndex = lineTokens.findIndex((item) => item.id === firstToken.id);
+                const currentIndex = lineTokens.findIndex((item) => item.id === token.id);
+                if (firstIndex === -1 || currentIndex === -1) {
+                    return;
+                }
+                const [start, end] = firstIndex <= currentIndex ? [firstIndex, currentIndex] : [currentIndex, firstIndex];
+                tokenSelection = lineTokens.slice(start, end + 1).map((item) => item.id);
                 renderAll();
             }
 
@@ -598,15 +661,29 @@
                 spans.forEach((span) => {
                     const zone = document.createElement('div');
                     zone.className = 'source-zone';
-                    if (fields.some((field) => field.source && field.source.span_id === span.id)) {
+                    if (fields.some((field) => field.source && (field.source.token_ids || []).includes(span.id))) {
                         zone.classList.add('used');
+                    }
+                    if (tokenSelection.includes(span.id)) {
+                        zone.classList.add('selected');
                     }
                     zone.style.left = `${span.bbox[0] * scale}px`;
                     zone.style.top = `${span.bbox[1] * scale}px`;
                     zone.style.width = `${Math.max(8, (span.bbox[2] - span.bbox[0]) * scale)}px`;
                     zone.style.height = `${Math.max(8, (span.bbox[3] - span.bbox[1]) * scale)}px`;
                     zone.title = span.text;
-                    zone.addEventListener('click', () => createFieldFromSpan(span));
+                    zone.addEventListener('pointerdown', (event) => {
+                        event.preventDefault();
+                        beginTokenSelection(span);
+                    });
+                    zone.addEventListener('pointerenter', () => {
+                        if (tokenSelection.length) {
+                            extendTokenSelection(span);
+                        }
+                    });
+                    zone.addEventListener('click', (event) => {
+                        event.preventDefault();
+                    });
                     sourceOverlay.appendChild(zone);
                 });
             }
@@ -663,6 +740,7 @@
                     button.textContent = field.key;
                     button.addEventListener('click', () => {
                         selectedFieldIndex = index;
+                        tokenSelection = [];
                         renderAll();
                     });
                     placeholderList.appendChild(button);
@@ -674,20 +752,21 @@
                 inspectorEmpty.classList.toggle('hidden', Boolean(field));
                 inspectorFields.classList.toggle('hidden', !field);
                 if (!field) {
-                    liveHint.textContent = 'Click blue text to create a placeholder.';
+                    liveHint.textContent = tokenSelection.length > 1
+                        ? `Release to create placeholder from "${buildSelectionFromTokens(tokenSelection)?.text || ''}".`
+                        : 'Tap one word or drag across words.';
                     return;
                 }
 
                 fieldKey.value = field.key;
                 fieldText.value = field.text;
-                fieldReplaceText.value = field.source ? (field.source.replace_text || field.source.text || '') : '';
                 fieldType.value = field.type;
                 fieldSourceText.value = field.source ? field.source.text : 'Manual box';
                 fieldMeta.textContent = field.source
-                    ? 'For a single word inside a sentence, change only "Text to replace in PDF".'
+                    ? `Selected ${field.source.token_ids?.length || 1} word${(field.source.token_ids?.length || 1) > 1 ? 's' : ''} from the PDF.`
                     : 'Manual box fallback.';
                 liveHint.textContent = field.source
-                    ? 'Edit the placeholder name and the exact text to replace if needed.'
+                    ? 'Edit the placeholder name or preview value, then preview and save.'
                     : 'Drag the manual box where you need it, then preview and save.';
             }
 
@@ -701,6 +780,7 @@
 
             function startDrag(event, index) {
                 selectedFieldIndex = index;
+                tokenSelection = [];
                 const field = fields[index];
                 if (field.origin !== 'manual') {
                     renderAll();
@@ -737,6 +817,9 @@
             }
 
             function onPointerUp() {
+                if (tokenSelection.length) {
+                    createFieldFromTokens(tokenSelection);
+                }
                 dragState = null;
             }
 
@@ -745,9 +828,6 @@
                 if (!field) return;
                 field.key = safeKey(fieldKey.value, field.key);
                 field.text = fieldText.value;
-                if (field.source) {
-                    field.source.replace_text = fieldReplaceText.value || field.source.text;
-                }
                 renderAll();
             }
 
@@ -762,10 +842,11 @@
                 if (selectedFieldIndex === null) return;
                 fields.splice(selectedFieldIndex, 1);
                 selectedFieldIndex = fields.length ? Math.min(selectedFieldIndex, fields.length - 1) : null;
+                tokenSelection = [];
                 renderAll();
             });
 
-            [fieldKey, fieldText, fieldReplaceText].forEach((input) => {
+            [fieldKey, fieldText].forEach((input) => {
                 input.addEventListener('input', updateSelectedField);
             });
 
