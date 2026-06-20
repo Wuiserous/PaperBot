@@ -7,25 +7,27 @@ import web_auth
 
 
 def register_template_builder_routes(app):
-    @app.route("/app/templates", methods=["GET"])
-    @web_auth.require_active_subscription
-    def web_template_builder():
-        user = web_auth.current_web_user() or {}
+    def _render_builder(user: dict, selected_template=None):
         templates = custom_template_service.list_templates(user["id"])
-        requested_template_id = request.args.get("template")
-        selected_template = None
-
-        if requested_template_id:
-            selected_template = custom_template_service.load_template(user["id"], requested_template_id)
         if not selected_template and templates:
             selected_template = custom_template_service.load_template(user["id"], templates[0]["id"])
-
         return render_template(
             "template_builder.html",
             user=user,
             templates=templates,
             selected_template=selected_template,
         )
+
+    @app.route("/app/templates", methods=["GET"])
+    @web_auth.require_active_subscription
+    def web_template_builder():
+        user = web_auth.current_web_user() or {}
+        requested_template_id = request.args.get("template")
+        selected_template = None
+
+        if requested_template_id:
+            selected_template = custom_template_service.load_template(user["id"], requested_template_id)
+        return _render_builder(user, selected_template=selected_template)
 
     @app.route("/app/templates/create", methods=["POST"])
     @web_auth.require_active_subscription
@@ -43,19 +45,21 @@ def register_template_builder_routes(app):
                 upload,
             )
             flash("Template ready. Click detected PDF text to create placeholders, then save.", "success")
-            return redirect(url_for("web_template_builder", template=template_id))
+            return _render_builder(user, selected_template=custom_template_service.load_template(user["id"], template_id))
         except Exception as exc:
             flash(str(exc))
-            return redirect(url_for("web_template_builder"))
+            return _render_builder(user)
 
     @app.route("/app/templates/<template_id>/save", methods=["POST"])
     @web_auth.require_active_subscription
     def web_template_save(template_id):
         user = web_auth.current_web_user() or {}
         fields_raw = request.form.get("fields_json", "[]")
+        snapshot_raw = request.form.get("template_snapshot_json", "")
+        selected_template = None
         try:
             fields = json.loads(fields_raw)
-            custom_template_service.save_template(
+            selected_template = custom_template_service.save_template(
                 user["id"],
                 template_id,
                 request.form.get("template_name", ""),
@@ -63,8 +67,24 @@ def register_template_builder_routes(app):
             )
             flash("Template saved.", "success")
         except Exception as exc:
-            flash(f"Could not save template: {exc}")
-        return redirect(url_for("web_template_builder", template=template_id))
+            try:
+                snapshot = json.loads(snapshot_raw) if snapshot_raw else None
+                if snapshot:
+                    snapshot["fields"] = json.loads(fields_raw)
+                    snapshot["name"] = request.form.get("template_name", "") or snapshot.get("name", "")
+                    restored_id = custom_template_service.restore_template_from_snapshot(user["id"], snapshot)
+                    selected_template = custom_template_service.save_template(
+                        user["id"],
+                        restored_id,
+                        request.form.get("template_name", ""),
+                        json.loads(fields_raw),
+                    )
+                    flash("Template saved.", "success")
+                else:
+                    flash(f"Could not save template: {exc}")
+            except Exception as restore_exc:
+                flash(f"Could not save template: {restore_exc}")
+        return _render_builder(user, selected_template=selected_template)
 
     @app.route("/app/templates/<template_id>/render-check", methods=["POST"])
     @web_auth.require_active_subscription

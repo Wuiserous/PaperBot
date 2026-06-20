@@ -311,6 +311,13 @@ def _template_data_url(path: str) -> str | None:
         return "data:image/png;base64," + base64.b64encode(handle.read()).decode("ascii")
 
 
+def _pdf_base64(path: str) -> str | None:
+    if not path or not os.path.exists(path):
+        return None
+    with open(path, "rb") as handle:
+        return base64.b64encode(handle.read()).decode("ascii")
+
+
 def list_templates(owner_user_id: int) -> list[dict[str, Any]]:
     conn = _connect()
     try:
@@ -342,10 +349,87 @@ def load_template(owner_user_id: int, template_id: str) -> dict[str, Any] | None
         template = _row_to_template(row)
         if template:
             template["preview_data_url"] = _template_data_url(template["preview_path"])
+            template["source_pdf_base64"] = _pdf_base64(template["source_pdf_path"])
             template["extracted_spans"] = _extract_text_spans(template["source_pdf_path"])
         return template
     finally:
         conn.close()
+
+
+def restore_template_from_snapshot(owner_user_id: int, snapshot: dict[str, Any]) -> str:
+    _ensure_store()
+    pdf_base64 = _normalize_text(snapshot.get("source_pdf_base64"), "")
+    if not pdf_base64:
+        raise ValueError("Template file is missing.")
+
+    template_id = _normalize_text(snapshot.get("id"), uuid.uuid4().hex)
+    display_name = _normalize_text(snapshot.get("name"), "Untitled Template")
+    asset_name = f"{_slugify(display_name)}-{template_id[:8]}.pdf"
+    asset_path = os.path.join(ASSET_DIR, asset_name)
+    preview_path = os.path.join(PREVIEW_DIR, f"{template_id}.png")
+
+    pdf_bytes = base64.b64decode(pdf_base64.encode("ascii"))
+    with open(asset_path, "wb") as handle:
+        handle.write(pdf_bytes)
+
+    generated_preview_path = pdf_generator._create_preview_from_pdf(asset_path)
+    if not generated_preview_path or not os.path.exists(generated_preview_path):
+        raise ValueError("Could not rebuild template preview.")
+    shutil.copyfile(generated_preview_path, preview_path)
+    if generated_preview_path != preview_path and os.path.exists(generated_preview_path):
+        try:
+            os.remove(generated_preview_path)
+        except OSError:
+            pass
+
+    page_width = float(snapshot.get("page_width") or 0)
+    page_height = float(snapshot.get("page_height") or 0)
+    if not page_width or not page_height:
+        doc = fitz.open(asset_path)
+        try:
+            page = doc[0]
+            page_width = float(page.rect.width)
+            page_height = float(page.rect.height)
+        finally:
+            doc.close()
+
+    fields = snapshot.get("fields") if isinstance(snapshot.get("fields"), list) else []
+    now = int(time.time())
+    conn = _connect()
+    try:
+        conn.execute(
+            """
+            INSERT INTO custom_templates (
+                id, owner_user_id, name, source_pdf_path, preview_path, page_width, page_height, fields_json, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                owner_user_id = excluded.owner_user_id,
+                name = excluded.name,
+                source_pdf_path = excluded.source_pdf_path,
+                preview_path = excluded.preview_path,
+                page_width = excluded.page_width,
+                page_height = excluded.page_height,
+                fields_json = excluded.fields_json,
+                updated_at = excluded.updated_at
+            """,
+            (
+                template_id,
+                owner_user_id,
+                display_name,
+                asset_path,
+                preview_path,
+                page_width,
+                page_height,
+                json.dumps(fields),
+                now,
+                now,
+            ),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    return template_id
 
 
 def create_template(owner_user_id: int, name: str, upload) -> str:

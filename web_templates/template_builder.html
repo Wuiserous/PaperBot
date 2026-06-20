@@ -531,6 +531,7 @@
                         <form method="post" action="{{ url_for('web_template_save', template_id=selected_template.id) }}" id="saveTemplateForm" class="hidden">
                             <input type="hidden" name="template_name" id="saveTemplateName" value="{{ selected_template.name }}">
                             <input type="hidden" name="fields_json" id="saveFieldsJson">
+                            <input type="hidden" name="template_snapshot_json" id="templateSnapshotJson">
                         </form>
                     {% else %}
                         <div class="empty-state">The editor opens when a template is selected.</div>
@@ -558,10 +559,12 @@
             const saveTemplateForm = document.querySelector('#saveTemplateForm');
             const saveTemplateName = document.querySelector('#saveTemplateName');
             const saveFieldsJson = document.querySelector('#saveFieldsJson');
+            const templateSnapshotJson = document.querySelector('#templateSnapshotJson');
             const editorTemplateName = document.querySelector('#editorTemplateName');
             const selectionStrip = document.querySelector('#selectionStrip');
             const selectionText = document.querySelector('#selectionText');
             const selectionMeta = document.querySelector('#selectionMeta');
+            const templateSnapshot = {{ selected_template|tojson }};
 
             const inspectorEmpty = document.querySelector('#inspectorEmpty');
             const inspectorFields = document.querySelector('#inspectorFields');
@@ -944,6 +947,9 @@
             function savePayload() {
                 saveTemplateName.value = editorTemplateName.value.trim() || 'Untitled Template';
                 saveFieldsJson.value = JSON.stringify(fields);
+                templateSnapshot.fields = fields;
+                templateSnapshot.name = saveTemplateName.value;
+                templateSnapshotJson.value = JSON.stringify(templateSnapshot);
             }
 
             document.querySelector('#addManualButton').addEventListener('click', addManualField);
