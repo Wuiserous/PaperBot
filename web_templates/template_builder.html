@@ -9,7 +9,6 @@
             --bg: #f5efe8;
             --bg-deep: #ebe0d2;
             --panel: rgba(255, 255, 255, 0.88);
-            --panel-strong: rgba(255, 255, 255, 0.96);
             --text: #191714;
             --muted: #6f655d;
             --line: rgba(69, 52, 39, 0.10);
@@ -36,13 +35,10 @@
         }
 
         img { display: block; max-width: 100%; }
-
-        button, input, select {
-            font: inherit;
-        }
+        button, input, select { font: inherit; }
 
         .shell {
-            width: min(1380px, calc(100% - 24px));
+            width: min(1400px, calc(100% - 24px));
             margin: 0 auto;
             padding: 16px 0 24px;
         }
@@ -76,18 +72,12 @@
             margin: 0;
         }
 
-        .brand-copy h1 {
-            font-size: 1.32rem;
-        }
-
-        .brand-copy p {
-            color: var(--muted);
-            font-size: 0.9rem;
-        }
+        .brand-copy h1 { font-size: 1.32rem; }
+        .brand-copy p { color: var(--muted); font-size: 0.9rem; }
 
         .layout {
             display: grid;
-            grid-template-columns: 300px minmax(0, 1fr) 320px;
+            grid-template-columns: 300px minmax(0, 1fr) 340px;
             gap: 14px;
             align-items: start;
         }
@@ -111,20 +101,10 @@
             font-size: 1.02rem;
         }
 
-        .helper {
-            color: var(--muted);
-            font-size: 0.9rem;
-            line-height: 1.45;
-        }
+        .stack { display: grid; gap: 10px; }
 
-        .field {
-            display: grid;
-            gap: 6px;
-        }
-
-        .field label {
-            font-size: 0.88rem;
-        }
+        .field { display: grid; gap: 6px; }
+        .field label { font-size: 0.88rem; }
 
         .field input,
         .field select {
@@ -141,11 +121,6 @@
             outline: none;
             border-color: rgba(184, 106, 67, 0.42);
             box-shadow: 0 0 0 4px rgba(184, 106, 67, 0.10);
-        }
-
-        .stack {
-            display: grid;
-            gap: 10px;
         }
 
         .button,
@@ -178,10 +153,7 @@
             border: 1px dashed var(--line-strong);
         }
 
-        .flash-stack {
-            display: grid;
-            gap: 8px;
-        }
+        .flash-stack { display: grid; gap: 8px; }
 
         .flash {
             padding: 11px 13px;
@@ -194,6 +166,25 @@
 
         .flash.success {
             border-color: rgba(29, 107, 73, 0.16);
+            background: var(--success-soft);
+            color: var(--success);
+        }
+
+        .helper,
+        .empty-state,
+        .callout {
+            padding: 12px 14px;
+            border-radius: 16px;
+            border: 1px dashed var(--line-strong);
+            background: rgba(255, 255, 255, 0.62);
+            color: var(--muted);
+            font-size: 0.9rem;
+            line-height: 1.45;
+        }
+
+        .callout.strong {
+            border-style: solid;
+            border-color: rgba(29, 107, 73, 0.18);
             background: var(--success-soft);
             color: var(--success);
         }
@@ -215,9 +206,24 @@
             box-shadow: 0 10px 20px rgba(184, 106, 67, 0.08);
         }
 
-        .editor-shell {
+        .stats {
             display: grid;
-            gap: 12px;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .stat {
+            padding: 11px 12px;
+            border-radius: 16px;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.74);
+        }
+
+        .stat span {
+            display: block;
+            color: var(--muted);
+            font-size: 0.82rem;
+            margin-bottom: 4px;
         }
 
         .editor-toolbar {
@@ -241,7 +247,7 @@
         }
 
         .template-preview {
-            width: min(100%, 900px);
+            width: min(100%, 920px);
             height: auto;
             border-radius: 18px;
             border: 1px solid var(--line);
@@ -249,49 +255,78 @@
             background: #fff;
         }
 
-        .field-overlay {
+        .overlay-layer {
             position: absolute;
             inset: 0;
-            pointer-events: none;
         }
 
-        .field-node {
+        .source-zone {
             position: absolute;
-            border: 1.5px solid rgba(184, 106, 67, 0.82);
-            background: rgba(184, 106, 67, 0.14);
-            border-radius: 10px;
-            padding: 4px 6px;
-            color: var(--text);
-            cursor: move;
-            pointer-events: auto;
+            border: 1px solid rgba(33, 92, 181, 0.35);
+            background: rgba(33, 92, 181, 0.08);
+            border-radius: 8px;
+            cursor: pointer;
             overflow: hidden;
         }
 
-        .field-node.selected {
-            border-color: #1d6b49;
-            background: rgba(29, 107, 73, 0.14);
-            box-shadow: 0 0 0 3px rgba(29, 107, 73, 0.12);
+        .source-zone:hover {
+            border-color: rgba(33, 92, 181, 0.68);
+            background: rgba(33, 92, 181, 0.14);
         }
 
-        .field-node.textbox {
-            white-space: pre-wrap;
-            line-height: 1.25;
+        .source-zone.used {
+            border-color: rgba(29, 107, 73, 0.4);
+            background: rgba(29, 107, 73, 0.10);
         }
 
-        .field-label {
+        .source-zone.selected {
+            border-color: rgba(33, 92, 181, 0.9);
+            box-shadow: 0 0 0 3px rgba(33, 92, 181, 0.16);
+        }
+
+        .source-badge,
+        .placeholder-badge {
             position: absolute;
-            top: -22px;
+            top: -20px;
             left: 0;
             padding: 2px 8px;
             border-radius: 999px;
             background: rgba(24, 25, 29, 0.92);
             color: #fff;
             font-size: 0.72rem;
-            letter-spacing: 0.01em;
             white-space: nowrap;
         }
 
-        .field-handle {
+        .placeholder-node {
+            position: absolute;
+            border: 1.5px solid rgba(184, 106, 67, 0.84);
+            background: rgba(184, 106, 67, 0.14);
+            border-radius: 10px;
+            color: var(--text);
+            cursor: move;
+            overflow: hidden;
+        }
+
+        .placeholder-node.selected {
+            border-color: #1d6b49;
+            background: rgba(29, 107, 73, 0.14);
+            box-shadow: 0 0 0 3px rgba(29, 107, 73, 0.12);
+        }
+
+        .placeholder-node.manual {
+            border-style: dashed;
+        }
+
+        .placeholder-sample {
+            width: 100%;
+            height: 100%;
+            padding: 3px 6px;
+            white-space: pre-wrap;
+            line-height: 1.25;
+            overflow: hidden;
+        }
+
+        .placeholder-handle {
             position: absolute;
             right: -6px;
             bottom: -6px;
@@ -303,35 +338,35 @@
             cursor: nwse-resize;
         }
 
-        .coord-note,
-        .empty-state {
-            padding: 12px 14px;
-            border-radius: 16px;
-            border: 1px dashed var(--line-strong);
-            background: rgba(255, 255, 255, 0.62);
-            color: var(--muted);
-            font-size: 0.9rem;
-            line-height: 1.45;
-        }
-
-        .stats {
+        .placeholder-list {
             display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 8px;
+            max-height: 260px;
+            overflow: auto;
         }
 
-        .stat {
-            padding: 11px 12px;
-            border-radius: 16px;
-            border: 1px solid var(--line);
-            background: rgba(255, 255, 255, 0.74);
+        .placeholder-chip {
+            justify-content: space-between;
+            gap: 10px;
         }
 
-        .stat span {
+        .chip-copy {
+            text-align: left;
+            min-width: 0;
+        }
+
+        .chip-copy strong,
+        .chip-copy span {
             display: block;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .chip-copy span {
             color: var(--muted);
             font-size: 0.82rem;
-            margin-bottom: 4px;
+            margin-top: 2px;
         }
 
         .render-preview {
@@ -347,14 +382,10 @@
             height: auto;
         }
 
-        .hidden {
-            display: none;
-        }
+        .hidden { display: none; }
 
         @media (max-width: 1120px) {
-            .layout {
-                grid-template-columns: 1fr;
-            }
+            .layout { grid-template-columns: 1fr; }
         }
 
         @media (max-width: 720px) {
@@ -372,6 +403,10 @@
             .editor-toolbar button {
                 width: 100%;
             }
+
+            .stats {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
@@ -382,7 +417,7 @@
                 <img class="brand-mark" src="{{ url_for('static', filename='icons/icon-192.png') }}" alt="PaperBot icon">
                 <div class="brand-copy">
                     <h1>Template Builder</h1>
-                    <p>Upload a PDF, place fields, save exact PDF-point coordinates.</p>
+                    <p>Upload a PDF, click existing text to turn it into placeholders, then save.</p>
                 </div>
             </div>
             <a class="button secondary" href="{{ url_for('web_dashboard') }}">Back to app</a>
@@ -414,7 +449,14 @@
                         <button class="primary" type="submit">Create template</button>
                     </form>
 
-                    <div class="coord-note">Use desktop for the easiest placement. Drag to move. Drag the bottom-right handle to resize. Save stores true PDF-point coordinates, not screen pixels.</div>
+                    <div class="callout">
+                        Best input:
+                        a PDF that already contains real selectable text. Click a detected phrase in the preview, name the placeholder, and PaperBot will reuse that text box, style, and position during rendering.
+                    </div>
+
+                    <div class="helper">
+                        If a PDF is messy or text is not selectable, you can still use manual placeholders as a fallback.
+                    </div>
 
                     <h2 class="section-title">Saved templates</h2>
                     <div class="template-list">
@@ -432,85 +474,75 @@
             <main class="card">
                 <div class="card-body">
                     {% if selected_template %}
-                        <div class="editor-shell">
-                            <div class="field">
-                                <label for="editorTemplateName">Template name</label>
-                                <input id="editorTemplateName" type="text" value="{{ selected_template.name }}">
-                            </div>
+                        <div class="field">
+                            <label for="editorTemplateName">Template name</label>
+                            <input id="editorTemplateName" type="text" value="{{ selected_template.name }}">
+                        </div>
 
-                            <div class="stats">
-                                <div class="stat">
-                                    <span>Page size</span>
-                                    <strong>{{ selected_template.page_width|round(1) }} × {{ selected_template.page_height|round(1) }} pt</strong>
-                                </div>
-                                <div class="stat">
-                                    <span>Fields</span>
-                                    <strong id="fieldCount">{{ selected_template.fields|length }}</strong>
-                                </div>
+                        <div class="stats">
+                            <div class="stat">
+                                <span>Detected text spans</span>
+                                <strong id="spanCount">{{ selected_template.extracted_spans|length }}</strong>
                             </div>
-
-                            <div class="editor-toolbar">
-                                <button class="secondary" type="button" id="addTextField">Add text</button>
-                                <button class="secondary" type="button" id="addTextboxField">Add textbox</button>
-                                <button class="ghost" type="button" id="duplicateField">Duplicate selected</button>
-                                <button class="ghost" type="button" id="deleteField">Delete selected</button>
-                                <button class="primary" type="button" id="renderCheckButton">Render check</button>
-                                <button class="primary" type="button" id="saveTemplateButton">Save template</button>
+                            <div class="stat">
+                                <span>Placeholders</span>
+                                <strong id="fieldCount">{{ selected_template.fields|length }}</strong>
                             </div>
+                            <div class="stat">
+                                <span>Page size</span>
+                                <strong>{{ selected_template.page_width|round(1) }} x {{ selected_template.page_height|round(1) }} pt</strong>
+                            </div>
+                        </div>
 
-                            <div class="editor-stage-wrap">
-                                <div class="editor-stage" id="editorStage">
-                                    <img
-                                        id="templateBackground"
-                                        class="template-preview"
-                                        src="{{ selected_template.preview_data_url }}"
-                                        alt="Template background"
-                                    >
-                                    <div class="field-overlay" id="fieldOverlay"></div>
-                                </div>
+                        <div class="editor-toolbar">
+                            <button class="secondary" type="button" id="createFromSelectionButton">Create placeholder from selected text</button>
+                            <button class="secondary" type="button" id="addTextField">Add manual text</button>
+                            <button class="ghost" type="button" id="duplicateField">Duplicate selected</button>
+                            <button class="ghost" type="button" id="deleteField">Delete selected</button>
+                            <button class="primary" type="button" id="renderCheckButton">Render check</button>
+                            <button class="primary" type="button" id="saveTemplateButton">Save template</button>
+                        </div>
+
+                        <div class="callout strong" id="selectionHint">Select blue text in the preview to convert it into a placeholder. Existing placeholders stay highlighted in amber.</div>
+
+                        <div class="editor-stage-wrap">
+                            <div class="editor-stage" id="editorStage">
+                                <img id="templateBackground" class="template-preview" src="{{ selected_template.preview_data_url }}" alt="Template background">
+                                <div class="overlay-layer" id="sourceOverlay"></div>
+                                <div class="overlay-layer" id="placeholderOverlay"></div>
                             </div>
                         </div>
                     {% else %}
-                        <div class="empty-state">Create a PDF template to start placing fields.</div>
+                        <div class="empty-state">Create a PDF template to start selecting placeholders from its text.</div>
                     {% endif %}
                 </div>
             </main>
 
             <aside class="card">
                 <div class="card-body">
-                    <h2 class="section-title">Inspector</h2>
+                    <h2 class="section-title">Placeholder Inspector</h2>
                     {% if selected_template %}
-                        <div class="stack" id="inspectorFields">
+                        <div class="placeholder-list" id="placeholderList"></div>
+
+                        <div class="stack hidden" id="inspectorFields">
                             <div class="field">
-                                <label for="fieldKey">Field key</label>
+                                <label for="fieldKey">Placeholder name</label>
                                 <input id="fieldKey" type="text" autocomplete="off">
                             </div>
                             <div class="field">
-                                <label for="fieldLabel">Field label</label>
+                                <label for="fieldLabel">Label</label>
                                 <input id="fieldLabel" type="text" autocomplete="off">
                             </div>
                             <div class="field">
-                                <label for="fieldText">Sample text</label>
+                                <label for="fieldText">Preview value</label>
                                 <input id="fieldText" type="text" autocomplete="off">
                             </div>
                             <div class="field">
-                                <label for="fieldType">Field type</label>
+                                <label for="fieldType">Render mode</label>
                                 <select id="fieldType">
-                                    <option value="simple_text">Text</option>
+                                    <option value="simple_text">Single line</option>
                                     <option value="textbox">Textbox</option>
                                 </select>
-                            </div>
-                            <div class="field">
-                                <label for="fieldFont">Font</label>
-                                <select id="fieldFont">
-                                    <option value="helv">Helvetica</option>
-                                    <option value="times-roman">Times</option>
-                                    <option value="cour">Courier</option>
-                                </select>
-                            </div>
-                            <div class="field">
-                                <label for="fieldFontsize">Font size</label>
-                                <input id="fieldFontsize" type="number" min="6" max="144" step="1">
                             </div>
                             <div class="field">
                                 <label for="fieldAlign">Align</label>
@@ -520,30 +552,24 @@
                                     <option value="2">Right</option>
                                 </select>
                             </div>
-                            <div class="stats">
-                                <div class="field">
-                                    <label for="fieldX">X</label>
-                                    <input id="fieldX" type="number" step="0.1">
-                                </div>
-                                <div class="field">
-                                    <label for="fieldY">Y</label>
-                                    <input id="fieldY" type="number" step="0.1">
-                                </div>
-                                <div class="field">
-                                    <label for="fieldW">W</label>
-                                    <input id="fieldW" type="number" step="0.1">
-                                </div>
-                                <div class="field">
-                                    <label for="fieldH">H</label>
-                                    <input id="fieldH" type="number" step="0.1">
-                                </div>
+                            <div class="field">
+                                <label for="fieldFontsize">Font size</label>
+                                <input id="fieldFontsize" type="number" min="6" max="144" step="1">
+                            </div>
+                            <div class="field">
+                                <label for="fieldOrigin">Source</label>
+                                <input id="fieldOrigin" type="text" readonly>
+                            </div>
+                            <div class="field">
+                                <label for="fieldSourceText">Original PDF text</label>
+                                <input id="fieldSourceText" type="text" readonly>
                             </div>
                         </div>
 
-                        <div class="coord-note" id="inspectorEmpty" style="display: none;">Select a field to fine-tune coordinates.</div>
+                        <div class="empty-state" id="inspectorEmpty">Select detected text or a placeholder to edit it.</div>
 
                         <h2 class="section-title">Render check</h2>
-                        <div class="render-preview" id="renderPreview">
+                        <div class="render-preview">
                             <img id="renderPreviewImage" src="{{ selected_template.preview_data_url }}" alt="Rendered preview">
                         </div>
 
@@ -561,16 +587,18 @@
 
     {% if selected_template %}
         <script>
-            const templateId = {{ selected_template.id|tojson }};
             const pageWidth = {{ selected_template.page_width|tojson }};
             const pageHeight = {{ selected_template.page_height|tojson }};
+            const spans = {{ selected_template.extracted_spans|tojson }};
             let fields = {{ selected_template.fields|tojson }};
-            let selectedIndex = fields.length ? 0 : null;
+            let selectedFieldIndex = fields.length ? 0 : null;
+            let selectedSpanId = null;
 
-            const editorStage = document.querySelector('#editorStage');
             const background = document.querySelector('#templateBackground');
-            const overlay = document.querySelector('#fieldOverlay');
+            const sourceOverlay = document.querySelector('#sourceOverlay');
+            const placeholderOverlay = document.querySelector('#placeholderOverlay');
             const fieldCount = document.querySelector('#fieldCount');
+            const spanCount = document.querySelector('#spanCount');
             const renderCheckButton = document.querySelector('#renderCheckButton');
             const renderPreviewImage = document.querySelector('#renderPreviewImage');
             const saveTemplateButton = document.querySelector('#saveTemplateButton');
@@ -578,6 +606,8 @@
             const saveTemplateName = document.querySelector('#saveTemplateName');
             const saveFieldsJson = document.querySelector('#saveFieldsJson');
             const editorTemplateName = document.querySelector('#editorTemplateName');
+            const placeholderList = document.querySelector('#placeholderList');
+            const createFromSelectionButton = document.querySelector('#createFromSelectionButton');
 
             const inspectorFields = document.querySelector('#inspectorFields');
             const inspectorEmpty = document.querySelector('#inspectorEmpty');
@@ -585,35 +615,23 @@
             const fieldLabel = document.querySelector('#fieldLabel');
             const fieldText = document.querySelector('#fieldText');
             const fieldType = document.querySelector('#fieldType');
-            const fieldFont = document.querySelector('#fieldFont');
-            const fieldFontsize = document.querySelector('#fieldFontsize');
             const fieldAlign = document.querySelector('#fieldAlign');
-            const fieldX = document.querySelector('#fieldX');
-            const fieldY = document.querySelector('#fieldY');
-            const fieldW = document.querySelector('#fieldW');
-            const fieldH = document.querySelector('#fieldH');
+            const fieldFontsize = document.querySelector('#fieldFontsize');
+            const fieldOrigin = document.querySelector('#fieldOrigin');
+            const fieldSourceText = document.querySelector('#fieldSourceText');
 
             let dragState = null;
 
-            function makeDefaultField(type) {
-                const nextNumber = fields.length + 1;
-                return {
-                    type,
-                    key: `field_${nextNumber}`,
-                    label: `Field ${nextNumber}`,
-                    text: type === 'textbox' ? 'Multi-line sample text' : 'Sample text',
-                    x: 48,
-                    y: 48 + (nextNumber - 1) * 20,
-                    w: type === 'textbox' ? 240 : 150,
-                    h: type === 'textbox' ? 72 : 22,
-                    fontsize: 12,
-                    fontname: 'helv',
-                    align: type === 'textbox' ? 1 : 0,
-                };
-            }
-
             function clamp(value, min, max) {
                 return Math.max(min, Math.min(max, value));
+            }
+
+            function safeKey(text, fallback) {
+                const key = String(text || '')
+                    .toLowerCase()
+                    .replace(/[^a-z0-9]+/g, '_')
+                    .replace(/^_+|_+$/g, '');
+                return key || fallback;
             }
 
             function getScale() {
@@ -622,85 +640,206 @@
             }
 
             function syncOverlaySize() {
-                overlay.style.width = `${background.clientWidth}px`;
-                overlay.style.height = `${background.clientHeight}px`;
+                const width = background.clientWidth;
+                const height = background.clientHeight;
+                sourceOverlay.style.width = `${width}px`;
+                sourceOverlay.style.height = `${height}px`;
+                placeholderOverlay.style.width = `${width}px`;
+                placeholderOverlay.style.height = `${height}px`;
             }
 
-            function renderFields() {
-                syncOverlaySize();
-                overlay.innerHTML = '';
-                const scale = getScale();
-
-                fields.forEach((field, index) => {
-                    const node = document.createElement('div');
-                    node.className = `field-node ${field.type === 'textbox' ? 'textbox' : ''}${selectedIndex === index ? ' selected' : ''}`;
-                    node.dataset.index = String(index);
-                    node.style.left = `${field.x * scale}px`;
-                    node.style.top = `${field.y * scale}px`;
-                    node.style.width = `${field.w * scale}px`;
-                    node.style.height = `${field.h * scale}px`;
-                    node.style.fontSize = `${Math.max(10, field.fontsize * scale)}px`;
-                    node.style.fontFamily = field.fontname === 'times-roman' ? '"Times New Roman", serif' : (field.fontname === 'cour' ? '"Courier New", monospace' : 'Arial, sans-serif');
-                    node.style.textAlign = field.align === 1 ? 'center' : (field.align === 2 ? 'right' : 'left');
-                    node.textContent = field.text;
-
-                    const label = document.createElement('div');
-                    label.className = 'field-label';
-                    label.textContent = field.label;
-                    node.appendChild(label);
-
-                    const handle = document.createElement('div');
-                    handle.className = 'field-handle';
-                    handle.dataset.handle = 'resize';
-                    node.appendChild(handle);
-
-                    node.addEventListener('pointerdown', (event) => startDrag(event, index));
-                    overlay.appendChild(node);
-                });
-
-                fieldCount.textContent = String(fields.length);
-                renderInspector();
+            function fieldForSpan(spanId) {
+                return fields.findIndex((field) => field.source && field.source.span_id === spanId);
             }
 
-            function renderInspector() {
-                const field = selectedIndex === null ? null : fields[selectedIndex];
-                const hasSelection = Boolean(field);
-                inspectorFields.style.display = hasSelection ? 'grid' : 'none';
-                inspectorEmpty.style.display = hasSelection ? 'none' : 'block';
-
-                if (!field) {
+            function createFieldFromSpan(span) {
+                const existingIndex = fieldForSpan(span.id);
+                if (existingIndex !== -1) {
+                    selectedFieldIndex = existingIndex;
+                    selectedSpanId = span.id;
+                    renderAll();
                     return;
                 }
 
+                const bbox = span.bbox;
+                const field = {
+                    origin: 'extracted',
+                    type: 'textbox',
+                    key: safeKey(span.text, `field_${fields.length + 1}`),
+                    label: span.text.length > 28 ? `${span.text.slice(0, 25)}...` : span.text,
+                    text: span.text,
+                    x: bbox[0],
+                    y: bbox[1],
+                    w: Math.max(16, bbox[2] - bbox[0]),
+                    h: Math.max(16, bbox[3] - bbox[1]),
+                    fontsize: Math.max(6, Math.round(span.font_size)),
+                    fontname: 'helv',
+                    align: 0,
+                    source: {
+                        span_id: span.id,
+                        text: span.text,
+                        bbox: bbox,
+                        font_key: span.font_key,
+                        font_label: span.font_label,
+                        font_alias: safeKey(span.font_label, 'font'),
+                        font_size: span.font_size,
+                        color: span.color,
+                    },
+                };
+                fields.push(field);
+                selectedFieldIndex = fields.length - 1;
+                selectedSpanId = span.id;
+                renderAll();
+            }
+
+            function makeManualField() {
+                const number = fields.length + 1;
+                return {
+                    origin: 'manual',
+                    type: 'textbox',
+                    key: `field_${number}`,
+                    label: `Field ${number}`,
+                    text: 'Sample text',
+                    x: 60,
+                    y: 60 + (number - 1) * 18,
+                    w: 220,
+                    h: 56,
+                    fontsize: 12,
+                    fontname: 'helv',
+                    align: 0,
+                };
+            }
+
+            function renderSourceSpans() {
+                sourceOverlay.innerHTML = '';
+                const scale = getScale();
+                spans.forEach((span) => {
+                    const width = Math.max(8, (span.bbox[2] - span.bbox[0]) * scale);
+                    const height = Math.max(8, (span.bbox[3] - span.bbox[1]) * scale);
+                    const zone = document.createElement('div');
+                    zone.className = 'source-zone';
+                    if (fieldForSpan(span.id) !== -1) {
+                        zone.classList.add('used');
+                    }
+                    if (selectedSpanId === span.id) {
+                        zone.classList.add('selected');
+                    }
+                    zone.style.left = `${span.bbox[0] * scale}px`;
+                    zone.style.top = `${span.bbox[1] * scale}px`;
+                    zone.style.width = `${width}px`;
+                    zone.style.height = `${height}px`;
+                    zone.title = span.text;
+                    zone.addEventListener('click', () => {
+                        selectedSpanId = span.id;
+                        renderAll();
+                    });
+                    sourceOverlay.appendChild(zone);
+                });
+                spanCount.textContent = String(spans.length);
+            }
+
+            function renderPlaceholders() {
+                placeholderOverlay.innerHTML = '';
+                const scale = getScale();
+
+                fields.forEach((field, index) => {
+                    const rect = field.source ? field.source.bbox : [field.x, field.y, field.x + field.w, field.y + field.h];
+                    const left = rect[0] * scale;
+                    const top = rect[1] * scale;
+                    const width = Math.max(16, (rect[2] - rect[0]) * scale);
+                    const height = Math.max(16, (rect[3] - rect[1]) * scale);
+                    const node = document.createElement('div');
+                    node.className = `placeholder-node ${field.origin === 'manual' ? 'manual' : ''}${selectedFieldIndex === index ? ' selected' : ''}`;
+                    node.style.left = `${left}px`;
+                    node.style.top = `${top}px`;
+                    node.style.width = `${width}px`;
+                    node.style.height = `${height}px`;
+                    node.addEventListener('pointerdown', (event) => startDrag(event, index));
+
+                    const badge = document.createElement('div');
+                    badge.className = 'placeholder-badge';
+                    badge.textContent = field.key;
+                    node.appendChild(badge);
+
+                    const sample = document.createElement('div');
+                    sample.className = 'placeholder-sample';
+                    sample.style.fontSize = `${Math.max(10, field.fontsize * scale)}px`;
+                    sample.style.textAlign = field.align === 1 ? 'center' : (field.align === 2 ? 'right' : 'left');
+                    sample.textContent = field.text;
+                    node.appendChild(sample);
+
+                    if (field.origin === 'manual') {
+                        const handle = document.createElement('div');
+                        handle.className = 'placeholder-handle';
+                        handle.dataset.handle = 'resize';
+                        node.appendChild(handle);
+                    }
+
+                    placeholderOverlay.appendChild(node);
+                });
+                fieldCount.textContent = String(fields.length);
+            }
+
+            function renderPlaceholderList() {
+                placeholderList.innerHTML = '';
+                if (!fields.length) {
+                    placeholderList.innerHTML = '<div class="empty-state">No placeholders yet.</div>';
+                    return;
+                }
+
+                fields.forEach((field, index) => {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = `button secondary placeholder-chip${selectedFieldIndex === index ? ' active' : ''}`;
+                    button.addEventListener('click', () => {
+                        selectedFieldIndex = index;
+                        selectedSpanId = field.source ? field.source.span_id : null;
+                        renderAll();
+                    });
+
+                    const copy = document.createElement('div');
+                    copy.className = 'chip-copy';
+                    copy.innerHTML = `<strong>${field.key}</strong><span>${field.source ? field.source.text : 'Manual placeholder'}</span>`;
+                    button.appendChild(copy);
+                    placeholderList.appendChild(button);
+                });
+            }
+
+            function renderInspector() {
+                const field = selectedFieldIndex === null ? null : fields[selectedFieldIndex];
+                const hasSelection = Boolean(field);
+                inspectorFields.classList.toggle('hidden', !hasSelection);
+                inspectorEmpty.classList.toggle('hidden', hasSelection);
+                if (!field) {
+                    return;
+                }
                 fieldKey.value = field.key;
                 fieldLabel.value = field.label;
                 fieldText.value = field.text;
                 fieldType.value = field.type;
-                fieldFont.value = field.fontname;
-                fieldFontsize.value = field.fontsize;
                 fieldAlign.value = String(field.align);
-                fieldX.value = field.x;
-                fieldY.value = field.y;
-                fieldW.value = field.w;
-                fieldH.value = field.h;
+                fieldFontsize.value = field.fontsize;
+                fieldOrigin.value = field.origin === 'extracted' ? 'Detected PDF text' : 'Manual fallback';
+                fieldSourceText.value = field.source ? field.source.text : 'Manual field';
             }
 
-            function updateSelectedField(patch) {
-                if (selectedIndex === null) {
-                    return;
-                }
-                fields[selectedIndex] = { ...fields[selectedIndex], ...patch };
-                renderFields();
+            function renderAll() {
+                syncOverlaySize();
+                renderSourceSpans();
+                renderPlaceholders();
+                renderPlaceholderList();
+                renderInspector();
+                createFromSelectionButton.disabled = !selectedSpanId;
             }
 
             function startDrag(event, index) {
                 event.preventDefault();
-                selectedIndex = index;
-                const mode = event.target.dataset.handle === 'resize' ? 'resize' : 'move';
-                const scale = getScale();
+                selectedFieldIndex = index;
                 const field = fields[index];
+                const isResize = event.target.dataset.handle === 'resize' && field.origin === 'manual';
                 dragState = {
-                    mode,
+                    index,
+                    mode: isResize ? 'resize' : 'move',
                     pointerId: event.pointerId,
                     startX: event.clientX,
                     startY: event.clientY,
@@ -708,17 +847,22 @@
                     originY: field.y,
                     originW: field.w,
                     originH: field.h,
-                    scale,
+                    scale: getScale(),
                 };
                 event.currentTarget.setPointerCapture(event.pointerId);
-                renderFields();
+                selectedSpanId = field.source ? field.source.span_id : null;
+                renderAll();
             }
 
             function onPointerMove(event) {
-                if (!dragState || selectedIndex === null) {
+                if (!dragState) {
                     return;
                 }
-                const field = fields[selectedIndex];
+                const field = fields[dragState.index];
+                if (field.origin !== 'manual') {
+                    return;
+                }
+
                 const dx = (event.clientX - dragState.startX) / dragState.scale;
                 const dy = (event.clientY - dragState.startY) / dragState.scale;
 
@@ -729,8 +873,7 @@
                     field.w = Number(clamp(dragState.originW + dx, 16, pageWidth - field.x).toFixed(1));
                     field.h = Number(clamp(dragState.originH + dy, 16, pageHeight - field.y).toFixed(1));
                 }
-
-                renderFields();
+                renderAll();
             }
 
             function onPointerUp() {
@@ -742,67 +885,70 @@
                 saveFieldsJson.value = JSON.stringify(fields);
             }
 
-            document.querySelector('#addTextField').addEventListener('click', () => {
-                fields.push(makeDefaultField('simple_text'));
-                selectedIndex = fields.length - 1;
-                renderFields();
+            createFromSelectionButton.addEventListener('click', () => {
+                if (!selectedSpanId) {
+                    return;
+                }
+                const span = spans.find((item) => item.id === selectedSpanId);
+                if (span) {
+                    createFieldFromSpan(span);
+                }
             });
 
-            document.querySelector('#addTextboxField').addEventListener('click', () => {
-                fields.push(makeDefaultField('textbox'));
-                selectedIndex = fields.length - 1;
-                renderFields();
+            document.querySelector('#addTextField').addEventListener('click', () => {
+                fields.push(makeManualField());
+                selectedFieldIndex = fields.length - 1;
+                selectedSpanId = null;
+                renderAll();
             });
 
             document.querySelector('#duplicateField').addEventListener('click', () => {
-                if (selectedIndex === null) {
+                if (selectedFieldIndex === null) {
                     return;
                 }
-                const original = fields[selectedIndex];
-                fields.push({
-                    ...original,
-                    key: `${original.key}_copy`,
-                    label: `${original.label} Copy`,
-                    x: clamp(original.x + 18, 0, pageWidth - original.w),
-                    y: clamp(original.y + 18, 0, pageHeight - original.h),
-                });
-                selectedIndex = fields.length - 1;
-                renderFields();
+                const original = fields[selectedFieldIndex];
+                const copy = JSON.parse(JSON.stringify(original));
+                copy.key = `${original.key}_copy`;
+                copy.label = `${original.label} Copy`;
+                copy.origin = original.origin === 'manual' ? 'manual' : original.origin;
+                if (copy.origin === 'manual') {
+                    copy.x = clamp((copy.x || 0) + 18, 0, pageWidth - copy.w);
+                    copy.y = clamp((copy.y || 0) + 18, 0, pageHeight - copy.h);
+                } else {
+                    copy.source = null;
+                    copy.origin = 'manual';
+                    copy.x = clamp(original.x + 18, 0, pageWidth - original.w);
+                    copy.y = clamp(original.y + 18, 0, pageHeight - original.h);
+                }
+                fields.push(copy);
+                selectedFieldIndex = fields.length - 1;
+                selectedSpanId = null;
+                renderAll();
             });
 
             document.querySelector('#deleteField').addEventListener('click', () => {
-                if (selectedIndex === null) {
+                if (selectedFieldIndex === null) {
                     return;
                 }
-                fields.splice(selectedIndex, 1);
-                selectedIndex = fields.length ? Math.min(selectedIndex, fields.length - 1) : null;
-                renderFields();
+                fields.splice(selectedFieldIndex, 1);
+                selectedFieldIndex = fields.length ? Math.min(selectedFieldIndex, fields.length - 1) : null;
+                selectedSpanId = selectedFieldIndex !== null && fields[selectedFieldIndex].source ? fields[selectedFieldIndex].source.span_id : null;
+                renderAll();
             });
 
-            [fieldKey, fieldLabel, fieldText, fieldType, fieldFont, fieldFontsize, fieldAlign, fieldX, fieldY, fieldW, fieldH].forEach((input) => {
+            [fieldKey, fieldLabel, fieldText, fieldType, fieldAlign, fieldFontsize].forEach((input) => {
                 input.addEventListener('input', () => {
-                    if (selectedIndex === null) {
+                    if (selectedFieldIndex === null) {
                         return;
                     }
-                    const current = fields[selectedIndex];
-                    const next = {
-                        ...current,
-                        key: fieldKey.value.trim() || current.key,
-                        label: fieldLabel.value.trim() || current.label,
-                        text: fieldText.value,
-                        type: fieldType.value,
-                        fontname: fieldFont.value,
-                        fontsize: clamp(Number(fieldFontsize.value || current.fontsize), 6, 144),
-                        align: Number(fieldAlign.value || current.align),
-                        x: clamp(Number(fieldX.value || current.x), 0, pageWidth),
-                        y: clamp(Number(fieldY.value || current.y), 0, pageHeight),
-                        w: clamp(Number(fieldW.value || current.w), 16, pageWidth),
-                        h: clamp(Number(fieldH.value || current.h), 16, pageHeight),
-                    };
-                    next.x = clamp(next.x, 0, pageWidth - next.w);
-                    next.y = clamp(next.y, 0, pageHeight - next.h);
-                    fields[selectedIndex] = next;
-                    renderFields();
+                    const field = fields[selectedFieldIndex];
+                    field.key = safeKey(fieldKey.value, field.key);
+                    field.label = fieldLabel.value.trim() || field.label;
+                    field.text = fieldText.value;
+                    field.type = fieldType.value;
+                    field.align = Number(fieldAlign.value || field.align);
+                    field.fontsize = clamp(Number(fieldFontsize.value || field.fontsize), 6, 144);
+                    renderAll();
                 });
             });
 
@@ -833,12 +979,12 @@
                 saveTemplateForm.submit();
             });
 
-            overlay.addEventListener('pointermove', onPointerMove);
-            overlay.addEventListener('pointerup', onPointerUp);
-            overlay.addEventListener('pointercancel', onPointerUp);
-            background.addEventListener('load', renderFields);
-            window.addEventListener('resize', renderFields);
-            renderFields();
+            document.addEventListener('pointermove', onPointerMove);
+            document.addEventListener('pointerup', onPointerUp);
+            document.addEventListener('pointercancel', onPointerUp);
+            background.addEventListener('load', renderAll);
+            window.addEventListener('resize', renderAll);
+            renderAll();
         </script>
     {% endif %}
 </body>

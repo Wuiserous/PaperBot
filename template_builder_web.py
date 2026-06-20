@@ -42,7 +42,7 @@ def register_template_builder_routes(app):
                 request.form.get("template_name", ""),
                 upload,
             )
-            flash("Template ready. Place your fields and save.", "success")
+            flash("Template ready. Click detected PDF text to create placeholders, then save.", "success")
             return redirect(url_for("web_template_builder", template=template_id))
         except Exception as exc:
             flash(str(exc))

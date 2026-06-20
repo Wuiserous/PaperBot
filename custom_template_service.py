@@ -66,6 +66,94 @@ def _row_to_template(row: sqlite3.Row | None) -> dict[str, Any] | None:
     return template
 
 
+def _int_color_to_rgb(color_value: int | None) -> tuple[float, float, float]:
+    if color_value is None:
+        return 0.0, 0.0, 0.0
+    red = ((color_value >> 16) & 255) / 255
+    green = ((color_value >> 8) & 255) / 255
+    blue = (color_value & 255) / 255
+    return red, green, blue
+
+
+def _safe_slug(value: str, default: str = "field") -> str:
+    cleaned = "".join(ch.lower() if ch.isalnum() else "_" for ch in value.strip())
+    cleaned = "_".join(part for part in cleaned.split("_") if part)
+    return cleaned or default
+
+
+def _normalize_source(source: dict[str, Any] | None, page_width: float, page_height: float) -> dict[str, Any] | None:
+    if not isinstance(source, dict):
+        return None
+
+    bbox = source.get("bbox") or [source.get("x"), source.get("y"), source.get("x2"), source.get("y2")]
+    if not isinstance(bbox, (list, tuple)) or len(bbox) != 4:
+        return None
+
+    x0 = _clamp(float(bbox[0] or 0), 0, page_width)
+    y0 = _clamp(float(bbox[1] or 0), 0, page_height)
+    x1 = _clamp(float(bbox[2] or x0), x0, page_width)
+    y1 = _clamp(float(bbox[3] or y0), y0, page_height)
+    font_label = _normalize_text(source.get("font_label"), "")
+    return {
+        "span_id": _normalize_text(source.get("span_id"), ""),
+        "text": _normalize_text(source.get("text"), ""),
+        "bbox": [round(x0, 1), round(y0, 1), round(x1, 1), round(y1, 1)],
+        "font_key": _normalize_text(source.get("font_key"), ""),
+        "font_label": font_label,
+        "font_alias": _normalize_text(source.get("font_alias"), _safe_slug(font_label, "font")),
+        "font_size": round(float(source.get("font_size", 12) or 12), 2),
+        "color": int(source.get("color", 0) or 0),
+    }
+
+
+def _extract_text_spans(pdf_path: str) -> list[dict[str, Any]]:
+    doc = fitz.open(pdf_path)
+    try:
+        page = doc[0]
+        fonts = page.get_fonts()
+        font_map: dict[str, tuple[int, str]] = {}
+        for xref, _ext, _type, base_name, resource_name, _encoding in fonts:
+            normalized_name = str(base_name).split("+", 1)[-1]
+            font_map[normalized_name] = (int(xref), str(resource_name))
+            font_map[str(base_name)] = (int(xref), str(resource_name))
+
+        spans: list[dict[str, Any]] = []
+        raw = page.get_text("dict")
+        counter = 0
+        for block_index, block in enumerate(raw.get("blocks", [])):
+            for line_index, line in enumerate(block.get("lines", [])):
+                for span_index, span in enumerate(line.get("spans", [])):
+                    text = _normalize_text(span.get("text"), "")
+                    if not text:
+                        continue
+                    bbox = span.get("bbox")
+                    if not bbox or len(bbox) != 4:
+                        continue
+                    font_label = str(span.get("font") or "")
+                    font_xref, font_key = font_map.get(font_label, font_map.get(font_label.split("+", 1)[-1], (0, "")))
+                    spans.append(
+                        {
+                            "id": f"span-{counter}",
+                            "page": 0,
+                            "text": text,
+                            "bbox": [round(float(value), 1) for value in bbox],
+                            "font_label": font_label,
+                            "font_key": font_key,
+                            "font_xref": int(font_xref or 0),
+                            "font_size": round(float(span.get("size", 12) or 12), 2),
+                            "color": int(span.get("color", 0) or 0),
+                            "flags": int(span.get("flags", 0) or 0),
+                            "block_index": block_index,
+                            "line_index": line_index,
+                            "span_index": span_index,
+                        }
+                    )
+                    counter += 1
+        return spans
+    finally:
+        doc.close()
+
+
 def _slugify(name: str) -> str:
     cleaned = "".join(ch.lower() if ch.isalnum() else "-" for ch in name.strip())
     cleaned = "-".join(part for part in cleaned.split("-") if part)
@@ -86,26 +174,33 @@ def _sanitize_field(field: dict[str, Any], index: int, page_width: float, page_h
     if field_type not in {"simple_text", "textbox"}:
         field_type = "simple_text"
 
-    fontname = _normalize_text(field.get("fontname"), "helv").lower()
-    if fontname not in ALLOWED_FONTS:
-        fontname = "helv"
+    source = _normalize_source(field.get("source"), page_width, page_height)
 
-    fontsize = int(_clamp(float(field.get("fontsize", 12) or 12), 6, 144))
-    width_default = 220 if field_type == "textbox" else 140
-    height_default = 70 if field_type == "textbox" else max(18, fontsize + 8)
+    detected_font = _normalize_text(field.get("fontname"), source.get("font_alias") if source else "helv").lower()
+    fontname = detected_font
+    if fontname not in ALLOWED_FONTS:
+        fontname = source.get("font_alias") if source and source.get("font_alias") else "helv"
+
+    default_font_size = source.get("font_size", 12) if source else 12
+    fontsize = int(_clamp(float(field.get("fontsize", default_font_size) or default_font_size), 6, 144))
+    source_bbox = source.get("bbox") if source else None
+    width_default = (source_bbox[2] - source_bbox[0]) if source_bbox else (220 if field_type == "textbox" else 140)
+    height_default = (source_bbox[3] - source_bbox[1]) if source_bbox else (70 if field_type == "textbox" else max(18, fontsize + 8))
     width = _clamp(float(field.get("w", width_default) or width_default), 16, page_width)
     height = _clamp(float(field.get("h", height_default) or height_default), 16, page_height)
-    x = _clamp(float(field.get("x", 48) or 48), 0, max(0, page_width - width))
-    y = _clamp(float(field.get("y", 48) or 48), 0, max(0, page_height - height))
+    x_default = source_bbox[0] if source_bbox else 48
+    y_default = source_bbox[1] if source_bbox else 48
+    x = _clamp(float(field.get("x", x_default) or x_default), 0, max(0, page_width - width))
+    y = _clamp(float(field.get("y", y_default) or y_default), 0, max(0, page_height - height))
     align = int(field.get("align", 0) or 0)
     if align not in {0, 1, 2}:
         align = 0
 
-    return {
+    cleaned = {
         "type": field_type,
-        "key": _normalize_text(field.get("key"), f"field_{index}"),
+        "key": _safe_slug(_normalize_text(field.get("key"), f"field_{index}"), f"field_{index}"),
         "label": _normalize_text(field.get("label"), f"Field {index}"),
-        "text": _normalize_text(field.get("text"), "Sample text"),
+        "text": _normalize_text(field.get("text"), source.get("text", "Sample text") if source else "Sample text"),
         "x": round(x, 1),
         "y": round(y, 1),
         "w": round(width, 1),
@@ -113,7 +208,11 @@ def _sanitize_field(field: dict[str, Any], index: int, page_width: float, page_h
         "fontsize": fontsize,
         "fontname": fontname,
         "align": align,
+        "origin": "extracted" if source else _normalize_text(field.get("origin"), "manual"),
     }
+    if source:
+        cleaned["source"] = source
+    return cleaned
 
 
 def _sanitize_fields(fields: list[dict[str, Any]], page_width: float, page_height: float) -> list[dict[str, Any]]:
@@ -162,6 +261,7 @@ def load_template(owner_user_id: int, template_id: str) -> dict[str, Any] | None
         template = _row_to_template(row)
         if template:
             template["preview_data_url"] = _template_data_url(template["preview_path"])
+            template["extracted_spans"] = _extract_text_spans(template["source_pdf_path"])
         return template
     finally:
         conn.close()
@@ -268,25 +368,41 @@ def render_check(owner_user_id: int, template_id: str, fields: list[dict[str, An
     doc = fitz.open(template["source_pdf_path"])
     try:
         page = doc[0]
+        embedded_fonts: dict[str, bytes] = {}
+        for xref, _ext, _type, base_name, resource_name, _encoding in page.get_fonts():
+            font_bytes = doc.extract_font(xref)[3]
+            if font_bytes:
+                embedded_fonts[str(resource_name)] = font_bytes
+                embedded_fonts[str(base_name).split("+", 1)[-1]] = font_bytes
+
         for field in render_fields:
             text = field["text"]
-            if field["type"] == "textbox":
-                page.insert_textbox(
-                    fitz.Rect(field["x"], field["y"], field["x"] + field["w"], field["y"] + field["h"]),
-                    text,
-                    fontsize=field["fontsize"],
-                    fontname=field["fontname"],
-                    align=field["align"],
-                    color=(0, 0, 0),
-                )
-            else:
-                page.insert_text(
-                    (field["x"], field["y"]),
-                    text,
-                    fontsize=field["fontsize"],
-                    fontname=field["fontname"],
-                    color=(0, 0, 0),
-                )
+            source = _normalize_source(field.get("source"), float(template["page_width"]), float(template["page_height"]))
+            render_rect = fitz.Rect(field["x"], field["y"], field["x"] + field["w"], field["h"] + field["y"])
+            font_name = field["fontname"]
+            color = (0, 0, 0)
+            if source:
+                render_rect = fitz.Rect(source["bbox"])
+                page.draw_rect(render_rect, color=(1, 1, 1), fill=(1, 1, 1), overlay=True)
+                color = _int_color_to_rgb(source.get("color"))
+                font_bytes = embedded_fonts.get(source.get("font_key")) or embedded_fonts.get(source.get("font_label"))
+                if font_bytes:
+                    page.insert_font(fontname=source["font_alias"], fontbuffer=font_bytes)
+                    font_name = source["font_alias"]
+                else:
+                    fallback_name = _normalize_text(font_name, "helv").lower()
+                    font_name = fallback_name if fallback_name in ALLOWED_FONTS else "helv"
+            elif font_name not in ALLOWED_FONTS:
+                font_name = "helv"
+
+            page.insert_textbox(
+                render_rect,
+                text,
+                fontsize=field["fontsize"],
+                fontname=font_name,
+                align=field["align"],
+                color=color,
+            )
         doc.save(render_pdf_path, garbage=4, deflate=True)
     finally:
         doc.close()
