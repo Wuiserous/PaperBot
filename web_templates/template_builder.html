@@ -529,6 +529,7 @@
                         </div>
 
                         <form method="post" action="{{ url_for('web_template_save', template_id=selected_template.id) }}" id="saveTemplateForm" class="hidden">
+                            <input type="hidden" name="template_id" value="{{ selected_template.id }}">
                             <input type="hidden" name="template_name" id="saveTemplateName" value="{{ selected_template.name }}">
                             <input type="hidden" name="fields_json" id="saveFieldsJson">
                             <input type="hidden" name="template_snapshot_json" id="templateSnapshotJson">
@@ -577,6 +578,7 @@
             let dragState = null;
             let tokenSelection = [];
             let statusMessage = 'Tap one word. Drag across words for a group.';
+            let inspectorFieldIndex = null;
 
             function safeKey(text, fallback) {
                 const key = String(text || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
@@ -833,15 +835,17 @@
                 inspectorEmpty.classList.toggle('hidden', Boolean(field));
                 inspectorFields.classList.toggle('hidden', !field);
                 if (!field) {
+                    inspectorFieldIndex = null;
                     return;
                 }
 
-                if (document.activeElement !== fieldKey) {
+                if (inspectorFieldIndex !== selectedFieldIndex || document.activeElement !== fieldKey) {
                     fieldKey.value = field.key || '';
                 }
-                if (document.activeElement !== fieldText) {
+                if (inspectorFieldIndex !== selectedFieldIndex || document.activeElement !== fieldText) {
                     fieldText.value = field.text || '';
                 }
+                inspectorFieldIndex = selectedFieldIndex;
                 fieldType.value = field.type;
                 fieldSourceText.value = field.source ? field.source.text : 'Manual box';
                 fieldMeta.textContent = field.source
@@ -946,7 +950,6 @@
                 field.text = fieldText.value;
                 setStatus(`Editing placeholder${field.key ? `: ${field.key}` : ''}`);
                 renderPlaceholders();
-                renderList();
                 renderSelectionStrip();
             }
 
@@ -977,6 +980,10 @@
 
             [fieldKey, fieldText].forEach((input) => {
                 input.addEventListener('input', updateSelectedField);
+                input.addEventListener('blur', () => {
+                    renderList();
+                    renderInspector();
+                });
             });
 
             renderCheckButton.addEventListener('click', async () => {

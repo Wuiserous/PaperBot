@@ -54,6 +54,7 @@ def register_template_builder_routes(app):
     @web_auth.require_active_subscription
     def web_template_save(template_id):
         user = web_auth.current_web_user() or {}
+        requested_template_id = request.form.get("template_id", template_id) or template_id
         fields_raw = request.form.get("fields_json", "[]")
         snapshot_raw = request.form.get("template_snapshot_json", "")
         selected_template = None
@@ -61,7 +62,7 @@ def register_template_builder_routes(app):
             fields = json.loads(fields_raw)
             selected_template = custom_template_service.save_template(
                 user["id"],
-                template_id,
+                requested_template_id,
                 request.form.get("template_name", ""),
                 fields,
             )
@@ -72,6 +73,7 @@ def register_template_builder_routes(app):
                 if snapshot:
                     snapshot["fields"] = json.loads(fields_raw)
                     snapshot["name"] = request.form.get("template_name", "") or snapshot.get("name", "")
+                    snapshot["id"] = requested_template_id or snapshot.get("id")
                     restored_id = custom_template_service.restore_template_from_snapshot(user["id"], snapshot)
                     selected_template = custom_template_service.save_template(
                         user["id"],

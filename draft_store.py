@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 import sqlite3
 import tempfile
 import time
@@ -13,6 +14,10 @@ DB_PATH = os.getenv(
     else os.path.join(os.path.dirname(os.path.abspath(__file__)), "paperbot_web_drafts.sqlite3"),
 )
 TTL_SECONDS = 60 * 60 * 12
+STORE_DIR = os.path.join(
+    tempfile.gettempdir(), "paperbot_web_drafts" if os.getenv("VERCEL") else "paperbot_web_drafts_local"
+)
+FILES_DIR = os.path.join(STORE_DIR, "files")
 
 
 def _connect():
@@ -22,6 +27,7 @@ def _connect():
 
 
 def _init_db() -> None:
+    os.makedirs(FILES_DIR, exist_ok=True)
     conn = _connect()
     try:
         conn.execute(
@@ -63,6 +69,25 @@ def _cleanup_files(payload: Optional[dict]) -> None:
                 pass
 
 
+def _copy_asset(path: str, draft_id: str, suffix: str) -> str:
+    if not path or not os.path.exists(path):
+        return ""
+
+    _, ext = os.path.splitext(path)
+    copied_path = os.path.join(FILES_DIR, f"{draft_id}-{suffix}{ext or ''}")
+    shutil.copyfile(path, copied_path)
+    return copied_path
+
+
+def _prepare_payload(payload: dict, draft_id: str, previous_payload: Optional[dict] = None) -> dict:
+    prepared = dict(payload)
+    if previous_payload:
+        _cleanup_files(previous_payload)
+    prepared["pdf_path"] = _copy_asset(str(payload.get("pdf_path") or ""), draft_id, "document")
+    prepared["preview_path"] = _copy_asset(str(payload.get("preview_path") or ""), draft_id, "preview")
+    return prepared
+
+
 def save_draft(payload: dict, draft_id: Optional[str] = None) -> str:
     _init_db()
     now = int(time.time())
@@ -70,6 +95,11 @@ def save_draft(payload: dict, draft_id: Optional[str] = None) -> str:
     conn = _connect()
     try:
         _cleanup_expired(conn)
+        previous_payload = None
+        existing_row = conn.execute("SELECT payload_json FROM drafts WHERE id = ?", (draft_id,)).fetchone()
+        if existing_row:
+            previous_payload = json.loads(existing_row["payload_json"])
+        stored_payload = _prepare_payload(payload, draft_id, previous_payload=previous_payload)
         conn.execute(
             """
             INSERT INTO drafts (id, payload_json, created_at, updated_at)
@@ -78,7 +108,7 @@ def save_draft(payload: dict, draft_id: Optional[str] = None) -> str:
                 payload_json = excluded.payload_json,
                 updated_at = excluded.updated_at
             """,
-            (draft_id, json.dumps(payload), now, now),
+            (draft_id, json.dumps(stored_payload), now, now),
         )
         conn.commit()
         return draft_id
