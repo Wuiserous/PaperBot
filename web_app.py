@@ -56,16 +56,53 @@ def clear_session_draft():
 
 def build_dashboard_context():
     import bulk_service
+    import custom_template_service
     import letter_service
 
-    schema = letter_service.get_letter_schema()
-    letter_types = letter_service.LETTER_TYPE_OPTIONS
-    selected_type = session.get("selected_letter_type", letter_types[0][0])
     user = web_auth.current_web_user() or {}
+    schema = letter_service.get_letter_schema()
+    letter_types = list(letter_service.LETTER_TYPE_OPTIONS)
+    custom_templates = custom_template_service.list_templates(user["id"])
+    for template in custom_templates:
+        type_key = f"{letter_service.CUSTOM_TEMPLATE_PREFIX}{template['id']}"
+        field_keys = set()
+        fields = [
+            {"name": "email", "label": "Email Address", "type": "email", "required": True, "placeholder": "name@example.com"},
+        ]
+        for field in template.get("fields") or []:
+            key = str(field.get("key") or "").strip()
+            if not key or key in field_keys or key == "email":
+                continue
+            field_keys.add(key)
+            label = str(field.get("label") or key.replace("_", " ").title())
+            fields.append(
+                {
+                    "name": key,
+                    "label": label,
+                    "type": "text",
+                    "required": True,
+                    "placeholder": str(field.get("text") or label),
+                }
+            )
+        schema[type_key] = {
+            "label": template["name"],
+            "short_label": template["name"],
+            "description": "Custom template",
+            "helper_text": "Fill the saved placeholders and generate a preview.",
+            "sender_label": "Persevex Support",
+            "fields": fields,
+        }
+        letter_types.append((type_key, template["name"]))
+
+    selected_type = session.get("selected_letter_type", letter_types[0][0])
+    if selected_type not in schema:
+        selected_type = letter_types[0][0]
+        session["selected_letter_type"] = selected_type
     draft = draft_store.load_draft(session.get("web_draft_id"))
     if draft:
         draft["id"] = session.get("web_draft_id")
-    draft_label = letter_service.get_letter_type_map().get(draft["letter_type"], "") if draft else ""
+    label_map = dict(letter_types)
+    draft_label = label_map.get(draft["letter_type"], draft.get("recipient_data", {}).get("letter_type", "")) if draft else ""
     form_values_by_type = _get_form_values_by_type()
     preview_token = os.path.getmtime(draft["preview_path"]) if draft and os.path.exists(draft["preview_path"]) else "0"
     just_previewed = bool(session.pop("just_previewed", False))
@@ -107,7 +144,8 @@ def web_preview():
     _remember_form_values(letter_type, form_data)
 
     try:
-        preview_payload = letter_service.build_letter_preview(letter_type, form_data)
+        user = web_auth.current_web_user() or {}
+        preview_payload = letter_service.build_letter_preview(letter_type, form_data, owner_user_id=user.get("id"))
         previous_draft_id = session.get("web_draft_id")
         new_draft_id = draft_store.save_draft(preview_payload)
         session["web_draft_id"] = new_draft_id

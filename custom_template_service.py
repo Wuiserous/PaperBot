@@ -915,3 +915,72 @@ def render_check(owner_user_id: int, template_id: str, fields: list[dict[str, An
                     os.remove(path)
                 except OSError:
                     pass
+
+
+def render_document(owner_user_id: int, template_id: str, values: dict[str, Any]) -> tuple[str, str]:
+    template = load_template(owner_user_id, template_id)
+    if not template:
+        raise ValueError("Template not found.")
+
+    output_pdf_path = os.path.join(tempfile.gettempdir(), f"paperbot-template-{template_id}-{uuid.uuid4().hex}.pdf")
+    output_png_path = output_pdf_path.replace(".pdf", ".png")
+
+    render_fields = []
+    for field in template["fields"]:
+        if not isinstance(field, dict):
+            continue
+        field_copy = dict(field)
+        field_key = _normalize_text(field_copy.get("key"), "")
+        if field_key and values.get(field_key):
+            field_copy["text"] = _normalize_text(values.get(field_key), field_copy.get("text", ""))
+        render_fields.append(field_copy)
+    render_fields = _sanitize_fields(render_fields, float(template["page_width"]), float(template["page_height"]))
+
+    doc = fitz.open(template["source_pdf_path"])
+    try:
+        page = doc[0]
+        embedded_fonts: dict[str, bytes] = {}
+        for xref, _ext, _type, base_name, resource_name, _encoding in page.get_fonts():
+            font_bytes = doc.extract_font(xref)[3]
+            if font_bytes:
+                embedded_fonts[str(resource_name)] = font_bytes
+                embedded_fonts[str(base_name).split("+", 1)[-1]] = font_bytes
+
+        for field in render_fields:
+            text = field["text"]
+            source = _normalize_source(field.get("source"), float(template["page_width"]), float(template["page_height"]))
+            render_rect = fitz.Rect(field["x"], field["y"], field["x"] + field["w"], field["h"] + field["y"])
+            font_name = field["fontname"]
+            color = (0, 0, 0)
+            if source:
+                render_rect = _resolve_source_rect(source)
+                page.draw_rect(render_rect, color=(1, 1, 1), fill=(1, 1, 1), overlay=True)
+                color = _int_color_to_rgb(source.get("color"))
+                font_bytes = embedded_fonts.get(source.get("font_key")) or embedded_fonts.get(source.get("font_label"))
+                if font_bytes:
+                    page.insert_font(fontname=source["font_alias"], fontbuffer=font_bytes)
+                    font_name = source["font_alias"]
+                else:
+                    fallback_name = _normalize_text(font_name, "helv").lower()
+                    font_name = fallback_name if fallback_name in ALLOWED_FONTS else "helv"
+            elif font_name not in ALLOWED_FONTS:
+                font_name = "helv"
+
+            page.insert_textbox(
+                render_rect,
+                text,
+                fontsize=field["fontsize"],
+                fontname=font_name,
+                align=field["align"],
+                color=color,
+            )
+        doc.save(output_pdf_path, garbage=4, deflate=True)
+    finally:
+        doc.close()
+
+    generated_preview_path = pdf_generator._create_preview_from_pdf(output_pdf_path)
+    if generated_preview_path and generated_preview_path != output_png_path:
+        shutil.copyfile(generated_preview_path, output_png_path)
+    if not os.path.exists(output_png_path):
+        raise ValueError("Could not render a preview from this template.")
+    return output_pdf_path, output_png_path
