@@ -56,7 +56,6 @@ def register_template_builder_routes(app):
         user = web_auth.current_web_user() or {}
         requested_template_id = request.form.get("template_id", template_id) or template_id
         fields_raw = request.form.get("fields_json", "[]")
-        snapshot_raw = request.form.get("template_snapshot_json", "")
         selected_template = None
         try:
             fields = json.loads(fields_raw)
@@ -68,24 +67,7 @@ def register_template_builder_routes(app):
             )
             flash("Template saved.", "success")
         except Exception as exc:
-            try:
-                snapshot = json.loads(snapshot_raw) if snapshot_raw else None
-                if snapshot:
-                    snapshot["fields"] = json.loads(fields_raw)
-                    snapshot["name"] = request.form.get("template_name", "") or snapshot.get("name", "")
-                    snapshot["id"] = requested_template_id or snapshot.get("id")
-                    restored_id = custom_template_service.restore_template_from_snapshot(user["id"], snapshot)
-                    selected_template = custom_template_service.save_template(
-                        user["id"],
-                        restored_id,
-                        request.form.get("template_name", ""),
-                        json.loads(fields_raw),
-                    )
-                    flash("Template saved.", "success")
-                else:
-                    flash(f"Could not save template: {exc}")
-            except Exception as restore_exc:
-                flash(f"Could not save template: {restore_exc}")
+            flash(f"Could not save template: {exc}")
         return _render_builder(user, selected_template=selected_template)
 
     @app.route("/app/templates/<template_id>/render-check", methods=["POST"])

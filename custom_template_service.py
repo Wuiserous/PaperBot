@@ -20,6 +20,9 @@ ASSET_DIR = os.path.join(STORE_DIR, "assets")
 PREVIEW_DIR = os.path.join(STORE_DIR, "previews")
 DB_PATH = os.path.join(STORE_DIR, "custom_templates.sqlite3")
 ALLOWED_FONTS = {"helv", "times-roman", "cour"}
+BLOB_PREFIX = "custom_templates"
+BLOB_ACCESS = "private"
+BLOB_DISABLED_ENV = "PAPERBOT_DISABLE_BLOB_TEMPLATES"
 
 
 def _ensure_store() -> None:
@@ -64,6 +67,256 @@ def _row_to_template(row: sqlite3.Row | None) -> dict[str, Any] | None:
     except json.JSONDecodeError:
         template["fields"] = []
     return template
+
+
+def _use_blob_store() -> bool:
+    return bool(os.getenv("VERCEL")) and not os.getenv(BLOB_DISABLED_ENV)
+
+
+def _blob_client():
+    try:
+        from vercel.blob import BlobClient
+    except ImportError as exc:
+        raise RuntimeError("Install the 'vercel' package to use Vercel Blob template storage.") from exc
+    return BlobClient()
+
+
+def _blob_list_objects(**kwargs):
+    try:
+        from vercel.blob import list_objects
+    except ImportError as exc:
+        raise RuntimeError("Install the 'vercel' package to use Vercel Blob template storage.") from exc
+    return list_objects(**kwargs)
+
+
+def _blob_path(owner_user_id: int, template_id: str, filename: str) -> str:
+    return f"{BLOB_PREFIX}/{owner_user_id}/{template_id}/{filename}"
+
+
+def _blob_metadata_path(owner_user_id: int, template_id: str) -> str:
+    return _blob_path(owner_user_id, template_id, "metadata.json")
+
+
+def _blob_cache_path(owner_user_id: int, template_id: str, filename: str) -> str:
+    cache_dir = os.path.join(STORE_DIR, "blob_cache", str(owner_user_id), template_id)
+    os.makedirs(cache_dir, exist_ok=True)
+    return os.path.join(cache_dir, filename)
+
+
+def _blob_read_stream(stream) -> bytes:
+    if stream is None:
+        return b""
+    if hasattr(stream, "read"):
+        return stream.read()
+    chunks = []
+    for chunk in stream:
+        chunks.append(chunk)
+    return b"".join(chunks)
+
+
+def _blob_get_bytes(pathname: str) -> bytes | None:
+    result = _blob_client().get(pathname, access=BLOB_ACCESS)
+    if result is None or getattr(result, "status_code", None) != 200:
+        return None
+    return _blob_read_stream(result.stream)
+
+
+def _blob_put_bytes(pathname: str, data: bytes, content_type: str) -> None:
+    _blob_client().put(
+        pathname,
+        data,
+        access=BLOB_ACCESS,
+        content_type=content_type,
+        overwrite=True,
+        multipart=True,
+    )
+
+
+def _blob_get_metadata(owner_user_id: int, template_id: str) -> dict[str, Any] | None:
+    raw = _blob_get_bytes(_blob_metadata_path(owner_user_id, template_id))
+    if not raw:
+        return None
+    try:
+        metadata = json.loads(raw.decode("utf-8"))
+    except json.JSONDecodeError:
+        return None
+    if int(metadata.get("owner_user_id") or 0) != int(owner_user_id):
+        return None
+    fields = metadata.get("fields")
+    if not isinstance(fields, list):
+        try:
+            fields = json.loads(metadata.get("fields_json") or "[]")
+        except json.JSONDecodeError:
+            fields = []
+    metadata["fields"] = fields
+    return metadata
+
+
+def _blob_put_metadata(metadata: dict[str, Any]) -> None:
+    payload = {
+        "id": metadata["id"],
+        "owner_user_id": int(metadata["owner_user_id"]),
+        "name": metadata["name"],
+        "source_pdf_blob_path": metadata["source_pdf_blob_path"],
+        "preview_blob_path": metadata["preview_blob_path"],
+        "page_width": float(metadata["page_width"]),
+        "page_height": float(metadata["page_height"]),
+        "fields": metadata.get("fields") if isinstance(metadata.get("fields"), list) else [],
+        "created_at": int(metadata["created_at"]),
+        "updated_at": int(metadata["updated_at"]),
+    }
+    _blob_put_bytes(
+        _blob_metadata_path(payload["owner_user_id"], payload["id"]),
+        json.dumps(payload, separators=(",", ":")).encode("utf-8"),
+        "application/json",
+    )
+
+
+def _blob_materialize(owner_user_id: int, template_id: str, blob_path: str, filename: str) -> str:
+    local_path = _blob_cache_path(owner_user_id, template_id, filename)
+    data = _blob_get_bytes(blob_path)
+    if data is None:
+        raise ValueError("Template file is missing from Blob storage.")
+    with open(local_path, "wb") as handle:
+        handle.write(data)
+    return local_path
+
+
+def _blob_template_from_metadata(metadata: dict[str, Any], include_assets: bool = False) -> dict[str, Any]:
+    template = {
+        "id": metadata["id"],
+        "owner_user_id": int(metadata["owner_user_id"]),
+        "name": metadata["name"],
+        "source_pdf_blob_path": metadata["source_pdf_blob_path"],
+        "preview_blob_path": metadata["preview_blob_path"],
+        "page_width": float(metadata["page_width"]),
+        "page_height": float(metadata["page_height"]),
+        "fields": metadata.get("fields") if isinstance(metadata.get("fields"), list) else [],
+        "created_at": int(metadata["created_at"]),
+        "updated_at": int(metadata["updated_at"]),
+    }
+    if include_assets:
+        template["source_pdf_path"] = _blob_materialize(
+            template["owner_user_id"],
+            template["id"],
+            template["source_pdf_blob_path"],
+            "source.pdf",
+        )
+        template["preview_path"] = _blob_materialize(
+            template["owner_user_id"],
+            template["id"],
+            template["preview_blob_path"],
+            "preview.png",
+        )
+        template["preview_data_url"] = _template_data_url(template["preview_path"])
+        template["extracted_spans"] = _extract_text_spans(template["source_pdf_path"])
+    return template
+
+
+def _blob_iter_metadata(owner_user_id: int) -> list[dict[str, Any]]:
+    metadata_items = []
+    cursor = None
+    prefix = f"{BLOB_PREFIX}/{owner_user_id}/"
+    while True:
+        page = _blob_list_objects(prefix=prefix, cursor=cursor, limit=1000)
+        for item in page.blobs:
+            if not item.pathname.endswith("/metadata.json"):
+                continue
+            raw = _blob_get_bytes(item.pathname)
+            if not raw:
+                continue
+            try:
+                metadata = json.loads(raw.decode("utf-8"))
+            except json.JSONDecodeError:
+                continue
+            if int(metadata.get("owner_user_id") or 0) == int(owner_user_id):
+                fields = metadata.get("fields")
+                metadata["fields"] = fields if isinstance(fields, list) else []
+                metadata_items.append(metadata)
+        if not page.has_more:
+            break
+        cursor = page.cursor
+    return metadata_items
+
+
+def _blob_list_templates(owner_user_id: int) -> list[dict[str, Any]]:
+    templates = [_blob_template_from_metadata(item) for item in _blob_iter_metadata(owner_user_id)]
+    return sorted(templates, key=lambda item: (item["updated_at"], item["created_at"]), reverse=True)
+
+
+def _blob_load_template(owner_user_id: int, template_id: str) -> dict[str, Any] | None:
+    metadata = _blob_get_metadata(owner_user_id, template_id)
+    if not metadata:
+        return None
+    return _blob_template_from_metadata(metadata, include_assets=True)
+
+
+def _blob_create_template(owner_user_id: int, name: str, upload) -> str:
+    _ensure_store()
+    display_name = _normalize_text(name, "Untitled Template")
+    filename = _normalize_text(getattr(upload, "filename", ""), "")
+    if not filename.lower().endswith(".pdf"):
+        raise ValueError("Upload a PDF template.")
+
+    template_id = uuid.uuid4().hex
+    asset_path = _blob_cache_path(owner_user_id, template_id, "source.pdf")
+    preview_path = _blob_cache_path(owner_user_id, template_id, "preview.png")
+    upload.save(asset_path)
+
+    doc = fitz.open(asset_path)
+    try:
+        page = doc[0]
+        page_width = float(page.rect.width)
+        page_height = float(page.rect.height)
+    finally:
+        doc.close()
+
+    generated_preview_path = pdf_generator._create_preview_from_pdf(asset_path)
+    if not generated_preview_path or not os.path.exists(generated_preview_path):
+        raise ValueError("Could not render a preview from that PDF.")
+    shutil.copyfile(generated_preview_path, preview_path)
+    if generated_preview_path != preview_path and os.path.exists(generated_preview_path):
+        try:
+            os.remove(generated_preview_path)
+        except OSError:
+            pass
+
+    source_blob_path = _blob_path(owner_user_id, template_id, "source.pdf")
+    preview_blob_path = _blob_path(owner_user_id, template_id, "preview.png")
+    with open(asset_path, "rb") as handle:
+        _blob_put_bytes(source_blob_path, handle.read(), "application/pdf")
+    with open(preview_path, "rb") as handle:
+        _blob_put_bytes(preview_blob_path, handle.read(), "image/png")
+
+    now = int(time.time())
+    _blob_put_metadata(
+        {
+            "id": template_id,
+            "owner_user_id": owner_user_id,
+            "name": display_name,
+            "source_pdf_blob_path": source_blob_path,
+            "preview_blob_path": preview_blob_path,
+            "page_width": page_width,
+            "page_height": page_height,
+            "fields": [],
+            "created_at": now,
+            "updated_at": now,
+        }
+    )
+    return template_id
+
+
+def _blob_save_template(owner_user_id: int, template_id: str, name: str, fields: list[dict[str, Any]]) -> dict[str, Any]:
+    metadata = _blob_get_metadata(owner_user_id, template_id)
+    if not metadata:
+        raise ValueError("Template not found.")
+
+    cleaned_fields = _sanitize_fields(fields, float(metadata["page_width"]), float(metadata["page_height"]))
+    metadata["name"] = _normalize_text(name, metadata["name"])
+    metadata["fields"] = cleaned_fields
+    metadata["updated_at"] = int(time.time())
+    _blob_put_metadata(metadata)
+    return _blob_load_template(owner_user_id, template_id)
 
 
 def _int_color_to_rgb(color_value: int | None) -> tuple[float, float, float]:
@@ -319,6 +572,9 @@ def _pdf_base64(path: str) -> str | None:
 
 
 def list_templates(owner_user_id: int) -> list[dict[str, Any]]:
+    if _use_blob_store():
+        return _blob_list_templates(owner_user_id)
+
     conn = _connect()
     try:
         rows = conn.execute(
@@ -336,6 +592,9 @@ def list_templates(owner_user_id: int) -> list[dict[str, Any]]:
 
 
 def load_template(owner_user_id: int, template_id: str) -> dict[str, Any] | None:
+    if _use_blob_store():
+        return _blob_load_template(owner_user_id, template_id)
+
     conn = _connect()
     try:
         row = conn.execute(
@@ -349,7 +608,6 @@ def load_template(owner_user_id: int, template_id: str) -> dict[str, Any] | None
         template = _row_to_template(row)
         if template:
             template["preview_data_url"] = _template_data_url(template["preview_path"])
-            template["source_pdf_base64"] = _pdf_base64(template["source_pdf_path"])
             template["extracted_spans"] = _extract_text_spans(template["source_pdf_path"])
         return template
     finally:
@@ -433,6 +691,9 @@ def restore_template_from_snapshot(owner_user_id: int, snapshot: dict[str, Any])
 
 
 def create_template(owner_user_id: int, name: str, upload) -> str:
+    if _use_blob_store():
+        return _blob_create_template(owner_user_id, name, upload)
+
     _ensure_store()
     display_name = _normalize_text(name, "Untitled Template")
     filename = _normalize_text(getattr(upload, "filename", ""), "")
@@ -492,6 +753,9 @@ def create_template(owner_user_id: int, name: str, upload) -> str:
 
 
 def save_template(owner_user_id: int, template_id: str, name: str, fields: list[dict[str, Any]]) -> dict[str, Any]:
+    if _use_blob_store():
+        return _blob_save_template(owner_user_id, template_id, name, fields)
+
     template = load_template(owner_user_id, template_id)
     if not template:
         raise ValueError("Template not found.")

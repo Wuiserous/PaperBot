@@ -532,7 +532,6 @@
                             <input type="hidden" name="template_id" value="{{ selected_template.id }}">
                             <input type="hidden" name="template_name" id="saveTemplateName" value="{{ selected_template.name }}">
                             <input type="hidden" name="fields_json" id="saveFieldsJson">
-                            <input type="hidden" name="template_snapshot_json" id="templateSnapshotJson">
                         </form>
                     {% else %}
                         <div class="empty-state">The editor opens when a template is selected.</div>
@@ -560,12 +559,10 @@
             const saveTemplateForm = document.querySelector('#saveTemplateForm');
             const saveTemplateName = document.querySelector('#saveTemplateName');
             const saveFieldsJson = document.querySelector('#saveFieldsJson');
-            const templateSnapshotJson = document.querySelector('#templateSnapshotJson');
             const editorTemplateName = document.querySelector('#editorTemplateName');
             const selectionStrip = document.querySelector('#selectionStrip');
             const selectionText = document.querySelector('#selectionText');
             const selectionMeta = document.querySelector('#selectionMeta');
-            const templateSnapshot = {{ selected_template|tojson }};
 
             const inspectorEmpty = document.querySelector('#inspectorEmpty');
             const inspectorFields = document.querySelector('#inspectorFields');
@@ -961,9 +958,6 @@
                 }));
                 fields = sanitizedFields;
                 saveFieldsJson.value = JSON.stringify(sanitizedFields);
-                templateSnapshot.fields = sanitizedFields;
-                templateSnapshot.name = saveTemplateName.value;
-                templateSnapshotJson.value = JSON.stringify(templateSnapshot);
             }
 
             document.querySelector('#addManualButton').addEventListener('click', addManualField);
