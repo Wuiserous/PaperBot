@@ -97,6 +97,10 @@ def _blob_metadata_path(owner_user_id: int, template_id: str) -> str:
     return _blob_path(owner_user_id, template_id, "metadata.json")
 
 
+def _blob_index_path(owner_user_id: int) -> str:
+    return f"{BLOB_PREFIX}/{owner_user_id}/index.json"
+
+
 def _blob_cache_path(owner_user_id: int, template_id: str, filename: str) -> str:
     cache_dir = os.path.join(STORE_DIR, "blob_cache", str(owner_user_id), template_id)
     os.makedirs(cache_dir, exist_ok=True)
@@ -172,6 +176,60 @@ def _blob_put_metadata(metadata: dict[str, Any]) -> None:
     )
 
 
+def _blob_read_index(owner_user_id: int) -> list[dict[str, Any]]:
+    raw = _blob_get_bytes(_blob_index_path(owner_user_id))
+    if not raw:
+        return []
+    try:
+        index = json.loads(raw.decode("utf-8"))
+    except json.JSONDecodeError:
+        return []
+    templates = index.get("templates") if isinstance(index, dict) else index
+    if not isinstance(templates, list):
+        return []
+    return [item for item in templates if isinstance(item, dict)]
+
+
+def _blob_write_index(owner_user_id: int, templates: list[dict[str, Any]]) -> None:
+    payload = {
+        "owner_user_id": int(owner_user_id),
+        "templates": sorted(
+            templates,
+            key=lambda item: (int(item.get("updated_at") or 0), int(item.get("created_at") or 0)),
+            reverse=True,
+        ),
+    }
+    _blob_put_bytes(
+        _blob_index_path(owner_user_id),
+        json.dumps(payload, separators=(",", ":")).encode("utf-8"),
+        "application/json",
+    )
+
+
+def _blob_index_item(metadata: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": metadata["id"],
+        "owner_user_id": int(metadata["owner_user_id"]),
+        "name": metadata["name"],
+        "source_pdf_blob_path": metadata["source_pdf_blob_path"],
+        "preview_blob_path": metadata["preview_blob_path"],
+        "page_width": float(metadata["page_width"]),
+        "page_height": float(metadata["page_height"]),
+        "fields": metadata.get("fields") if isinstance(metadata.get("fields"), list) else [],
+        "created_at": int(metadata["created_at"]),
+        "updated_at": int(metadata["updated_at"]),
+    }
+
+
+def _blob_upsert_index(metadata: dict[str, Any]) -> None:
+    owner_user_id = int(metadata["owner_user_id"])
+    templates = _blob_read_index(owner_user_id)
+    item = _blob_index_item(metadata)
+    templates = [existing for existing in templates if existing.get("id") != item["id"]]
+    templates.append(item)
+    _blob_write_index(owner_user_id, templates)
+
+
 def _blob_materialize(owner_user_id: int, template_id: str, blob_path: str, filename: str) -> str:
     local_path = _blob_cache_path(owner_user_id, template_id, filename)
     data = _blob_get_bytes(blob_path)
@@ -240,7 +298,14 @@ def _blob_iter_metadata(owner_user_id: int) -> list[dict[str, Any]]:
 
 
 def _blob_list_templates(owner_user_id: int) -> list[dict[str, Any]]:
+    index_items = _blob_read_index(owner_user_id)
+    if index_items:
+        templates = [_blob_template_from_metadata(item) for item in index_items]
+        return sorted(templates, key=lambda item: (item["updated_at"], item["created_at"]), reverse=True)
+
     templates = [_blob_template_from_metadata(item) for item in _blob_iter_metadata(owner_user_id)]
+    if templates:
+        _blob_write_index(owner_user_id, [_blob_index_item(item) for item in templates])
     return sorted(templates, key=lambda item: (item["updated_at"], item["created_at"]), reverse=True)
 
 
@@ -289,20 +354,20 @@ def _blob_create_template(owner_user_id: int, name: str, upload) -> str:
         _blob_put_bytes(preview_blob_path, handle.read(), "image/png")
 
     now = int(time.time())
-    _blob_put_metadata(
-        {
-            "id": template_id,
-            "owner_user_id": owner_user_id,
-            "name": display_name,
-            "source_pdf_blob_path": source_blob_path,
-            "preview_blob_path": preview_blob_path,
-            "page_width": page_width,
-            "page_height": page_height,
-            "fields": [],
-            "created_at": now,
-            "updated_at": now,
-        }
-    )
+    metadata = {
+        "id": template_id,
+        "owner_user_id": owner_user_id,
+        "name": display_name,
+        "source_pdf_blob_path": source_blob_path,
+        "preview_blob_path": preview_blob_path,
+        "page_width": page_width,
+        "page_height": page_height,
+        "fields": [],
+        "created_at": now,
+        "updated_at": now,
+    }
+    _blob_put_metadata(metadata)
+    _blob_upsert_index(metadata)
     return template_id
 
 
@@ -316,6 +381,7 @@ def _blob_save_template(owner_user_id: int, template_id: str, name: str, fields:
     metadata["fields"] = cleaned_fields
     metadata["updated_at"] = int(time.time())
     _blob_put_metadata(metadata)
+    _blob_upsert_index(metadata)
     return _blob_load_template(owner_user_id, template_id)
 
 
