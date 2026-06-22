@@ -70,7 +70,7 @@ def _row_to_template(row: sqlite3.Row | None) -> dict[str, Any] | None:
 
 
 def _use_blob_store() -> bool:
-    return bool(os.getenv("VERCEL")) and not os.getenv(BLOB_DISABLED_ENV)
+    return bool(os.getenv("VERCEL") and os.getenv("BLOB_READ_WRITE_TOKEN")) and not os.getenv(BLOB_DISABLED_ENV)
 
 
 def _blob_client():
