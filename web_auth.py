@@ -27,18 +27,21 @@ def web_user_id_from_email(email: str) -> int:
 def send_login_otp(name: str, email: str) -> None:
     import resend
 
-    resend.api_key = os.getenv("RESEND_API_KEY")
+    api_key = os.getenv("RESEND_API_KEY")
+    if not api_key:
+        raise RuntimeError("RESEND_API_KEY is not configured.")
+    resend.api_key = api_key
 
     otp = f"{random.randint(0, 999999):06d}"
     expires_at = int(time.time()) + OTP_TTL_SECONDS
-    session["pending_login"] = {
+    pending_login = {
         "name": name.strip(),
         "email": email.strip().lower(),
         "otp_hash": _hash_otp(otp),
         "expires_at": expires_at,
     }
 
-    resend.Emails.send(
+    response = resend.Emails.send(
         {
             "from": f"PaperBot <{os.getenv('DEFAULT_EMAIL', 'support@persevex.com')}>",
             "to": [email],
@@ -46,6 +49,10 @@ def send_login_otp(name: str, email: str) -> None:
             "html": f"<p>Your PaperBot login code is <strong>{otp}</strong>.</p><p>This code expires in 10 minutes.</p>",
         }
     )
+    if not response or not _response_id(response):
+        raise RuntimeError("OTP email was not accepted by Resend.")
+    session["pending_login"] = pending_login
+    session.modified = True
 
 
 def complete_login(otp: str) -> dict:
@@ -78,6 +85,7 @@ def complete_login(otp: str) -> dict:
         "email": pending["email"],
     }
     session.pop("pending_login", None)
+    session.modified = True
 
     return {"ok": True, "active": status.get("status") == "active"}
 
@@ -223,3 +231,9 @@ def register_auth_routes(app):
 def _hash_otp(otp: str) -> str:
     secret = os.getenv("FLASK_SECRET_KEY", "paperbot")
     return hashlib.sha256(f"{secret}:{otp}".encode("utf-8")).hexdigest()
+
+
+def _response_id(response) -> str | None:
+    if isinstance(response, dict):
+        return response.get("id")
+    return getattr(response, "id", None)

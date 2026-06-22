@@ -41,6 +41,9 @@ def _fetch_from_sheet(params: dict):
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
     }
 
+    if not SCRIPT_URL:
+        return {"status": "error", "message": "GOOGLE_SCRIPT_URL is not configured."}
+
     try:
         # Make the request, explicitly allowing redirects (which is default but good to be clear)
         response = requests.get(
@@ -91,11 +94,13 @@ def get_user_status(user_id: int):
     if user_id_str in cache:
         cached_data = cache[user_id_str]
         # Perform local expiry check first - it's fast and saves an API call
-        expiry_date = datetime.strptime(cached_data['expiry_date'], "%Y-%m-%d")
-        if datetime.now() > expiry_date and cached_data['status'] != 'expired':
-            cached_data['status'] = 'expired'
-            cache[user_id_str] = cached_data
-            _save_cache(cache)
+        expiry_date_text = cached_data.get('expiry_date')
+        if expiry_date_text:
+            expiry_date = datetime.strptime(expiry_date_text, "%Y-%m-%d")
+            if datetime.now() > expiry_date and cached_data['status'] != 'expired':
+                cached_data['status'] = 'expired'
+                cache[user_id_str] = cached_data
+                _save_cache(cache)
 
         print(f"Cache hit for user {user_id_str}. Status: {cached_data['status']}")
         return cached_data
@@ -173,10 +178,12 @@ def fetch_student_from_client_sheet(name: str):
     Returns the JSON object if found, otherwise None.
     """
     CLIENT_SCRIPT_URL = os.getenv("CLIENT_SCRIPT_URL")  # Make sure this env variable is set
+    if not CLIENT_SCRIPT_URL:
+        raise RuntimeError("CLIENT_SCRIPT_URL is not configured.")
 
     try:
         params = {'action': 'findStudent', 'name': name}
-        response = requests.get(CLIENT_SCRIPT_URL, params=params)
+        response = requests.get(CLIENT_SCRIPT_URL, params=params, allow_redirects=True, timeout=15)
         response.raise_for_status()
         data = response.json()
 
@@ -188,6 +195,6 @@ def fetch_student_from_client_sheet(name: str):
 
     except Exception as e:
         print(f"HTTP Request to client's sheet failed: {e}")
-        return None
+        raise RuntimeError(f"Could not check the onboarding sheet: {e}") from e
 
 # print(fetch_student_from_client_sheet('Wuis'))

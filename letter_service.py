@@ -2,7 +2,6 @@ import os
 from typing import Dict, Tuple
 
 import database_handler
-import custom_template_service
 import pdf_generator
 from email_sender import send_personalized_email
 
@@ -14,7 +13,6 @@ LETTER_TYPE_OPTIONS = [
     ("course_certificate", "Course Completion Certificate"),
     ("ca_certificate", "Campus Ambassador Certificate"),
 ]
-CUSTOM_TEMPLATE_PREFIX = "custom_template:"
 
 
 def get_letter_type_map() -> Dict[str, str]:
@@ -90,11 +88,6 @@ def _clean_form_data(form_data: Dict[str, str]) -> Dict[str, str]:
 
 
 def _ensure_required_fields(letter_type: str, data: Dict[str, str]) -> None:
-    if letter_type.startswith(CUSTOM_TEMPLATE_PREFIX):
-        if not data.get("email"):
-            raise ValueError("Missing required fields: Email Address")
-        return
-
     schema = get_letter_schema().get(letter_type)
     if not schema:
         raise ValueError("Unknown letter type selected.")
@@ -114,24 +107,7 @@ def build_letter_preview(letter_type: str, form_data: Dict[str, str], create_pre
     data = _clean_form_data(form_data)
     _ensure_required_fields(letter_type, data)
 
-    if letter_type.startswith(CUSTOM_TEMPLATE_PREFIX):
-        if owner_user_id is None:
-            raise ValueError("Sign in again before using custom templates.")
-        template_id = letter_type.removeprefix(CUSTOM_TEMPLATE_PREFIX)
-        template = custom_template_service.load_template(owner_user_id, template_id)
-        if not template:
-            raise ValueError("Template not found.")
-        pdf_path, preview_path = custom_template_service.render_document(owner_user_id, template_id, data)
-        recipient_name = data.get("name") or data.get("candidate_name") or data.get("student_name") or template["name"]
-        recipient_data = {
-            "name": recipient_name,
-            "email": data["email"],
-            "domain": template["name"],
-            "letter_type": template["name"],
-        }
-        sender_account = "default"
-
-    elif letter_type == "ca_letter":
+    if letter_type == "ca_letter":
         pdf_path, preview_path = pdf_generator.generate_campus_ambassador_pdf_with_preview(data["name"], create_preview=create_preview)
         recipient_data = {
             "name": data["name"],

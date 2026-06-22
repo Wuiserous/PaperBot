@@ -1,13 +1,11 @@
 import logging
 import os
-import base64
 from datetime import timedelta
 
 from flask import Flask, Response, flash, jsonify, redirect, render_template, request, send_file, session, url_for
 from config_loader import load_project_env
 import draft_store
 import web_auth
-from template_builder_web import register_template_builder_routes
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -21,7 +19,6 @@ app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=45)
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["SESSION_COOKIE_SECURE"] = bool(os.getenv("VERCEL"))
 web_auth.register_auth_routes(app)
-register_template_builder_routes(app)
 
 
 def _get_form_values_by_type():
@@ -56,43 +53,11 @@ def clear_session_draft():
 
 def build_dashboard_context():
     import bulk_service
-    import custom_template_service
     import letter_service
 
     user = web_auth.current_web_user() or {}
     schema = letter_service.get_letter_schema()
     letter_types = list(letter_service.LETTER_TYPE_OPTIONS)
-    custom_templates = custom_template_service.list_templates(user["id"])
-    for template in custom_templates:
-        type_key = f"{letter_service.CUSTOM_TEMPLATE_PREFIX}{template['id']}"
-        field_keys = set()
-        fields = [
-            {"name": "email", "label": "Email Address", "type": "email", "required": True, "placeholder": "name@example.com"},
-        ]
-        for field in template.get("fields") or []:
-            key = str(field.get("key") or "").strip()
-            if not key or key in field_keys or key == "email":
-                continue
-            field_keys.add(key)
-            label = str(field.get("label") or key.replace("_", " ").title())
-            fields.append(
-                {
-                    "name": key,
-                    "label": label,
-                    "type": "text",
-                    "required": True,
-                    "placeholder": str(field.get("text") or label),
-                }
-            )
-        schema[type_key] = {
-            "label": template["name"],
-            "short_label": template["name"],
-            "description": "Custom template",
-            "helper_text": "Fill the saved placeholders and generate a preview.",
-            "sender_label": "Persevex Support",
-            "fields": fields,
-        }
-        letter_types.append((type_key, template["name"]))
 
     selected_type = session.get("selected_letter_type", letter_types[0][0])
     if selected_type not in schema:
@@ -106,10 +71,6 @@ def build_dashboard_context():
     form_values_by_type = _get_form_values_by_type()
     preview_token = os.path.getmtime(draft["preview_path"]) if draft and os.path.exists(draft["preview_path"]) else "0"
     just_previewed = bool(session.pop("just_previewed", False))
-    preview_data_url = None
-    if draft and draft.get("preview_path") and os.path.exists(draft["preview_path"]):
-        with open(draft["preview_path"], "rb") as preview_file:
-            preview_data_url = "data:image/png;base64," + base64.b64encode(preview_file.read()).decode("ascii")
 
     return {
         "schema": schema,
@@ -121,7 +82,6 @@ def build_dashboard_context():
         "draft_matches_selected": bool(draft and draft["letter_type"] == selected_type),
         "form_values_by_type": form_values_by_type,
         "preview_token": preview_token,
-        "preview_data_url": preview_data_url,
         "just_previewed": just_previewed,
         "bulk_header_formats": bulk_service.get_header_formats(),
     }

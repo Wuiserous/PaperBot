@@ -108,6 +108,10 @@ def send_personalized_email(pdf_path: str, recipient_data: dict, sender_account:
     Sends an email using the Resend API with a PDF attachment.
     """
     try:
+        if not resend.api_key:
+            print("[ERROR] RESEND_API_KEY is not configured.")
+            return False
+
         # 1. Determine Sender
         if sender_account == 'hr':
             # Resend format: "Friendly Name <email@domain.com>"
@@ -157,8 +161,9 @@ def send_personalized_email(pdf_path: str, recipient_data: dict, sender_account:
         response = resend.Emails.send(params)
 
         # Check if an ID was returned to confirm success
-        if response and response.get('id'):
-            print(f"Successfully sent email to {recipient_name}. ID: {response['id']}")
+        response_id = _response_id(response)
+        if response_id:
+            print(f"Successfully sent email to {recipient_name}. ID: {response_id}")
             return True
         else:
             print(f"[ERROR] API called but no ID returned: {response}")
@@ -167,3 +172,9 @@ def send_personalized_email(pdf_path: str, recipient_data: dict, sender_account:
     except Exception as e:
         print(f"[ERROR] An error occurred while sending the email via Resend: {e}")
         return False
+
+
+def _response_id(response) -> str | None:
+    if isinstance(response, dict):
+        return response.get("id")
+    return getattr(response, "id", None)

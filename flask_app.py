@@ -1,6 +1,5 @@
 import os
 import asyncio
-import base64
 import logging
 from datetime import timedelta
 from collections import deque
@@ -17,7 +16,6 @@ from email_sender import send_personalized_email
 import letter_service
 from config_loader import load_project_env
 import web_auth
-from template_builder_web import register_template_builder_routes
 
 # Telegram Imports
 from telegram import ReplyKeyboardMarkup, Update, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
@@ -44,7 +42,6 @@ app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["SESSION_COOKIE_SECURE"] = bool(os.getenv("VERCEL"))
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 web_auth.register_auth_routes(app)
-register_template_builder_routes(app)
 
 (
     AWAITING_PAYMENT_CONFIRMATION,
@@ -538,6 +535,9 @@ def build_dashboard_context():
     schema = letter_service.get_letter_schema()
     letter_types = letter_service.LETTER_TYPE_OPTIONS
     selected_type = session.get("selected_letter_type", letter_types[0][0])
+    if selected_type not in schema:
+        selected_type = letter_types[0][0]
+        session["selected_letter_type"] = selected_type
     user = web_auth.current_web_user() or {}
     draft = draft_store.load_draft(session.get("web_draft_id"))
     if draft:
@@ -546,10 +546,6 @@ def build_dashboard_context():
     form_values_by_type = _get_form_values_by_type()
     preview_token = os.path.getmtime(draft["preview_path"]) if draft and os.path.exists(draft["preview_path"]) else "0"
     just_previewed = bool(session.pop("just_previewed", False))
-    preview_data_url = None
-    if draft and draft.get("preview_path") and os.path.exists(draft["preview_path"]):
-        with open(draft["preview_path"], "rb") as preview_file:
-            preview_data_url = "data:image/png;base64," + base64.b64encode(preview_file.read()).decode("ascii")
 
     return {
         "schema": schema,
@@ -561,7 +557,6 @@ def build_dashboard_context():
         "draft_matches_selected": bool(draft and draft["letter_type"] == selected_type),
         "form_values_by_type": form_values_by_type,
         "preview_token": preview_token,
-        "preview_data_url": preview_data_url,
         "just_previewed": just_previewed,
         "bulk_header_formats": bulk_service.get_header_formats(),
     }
