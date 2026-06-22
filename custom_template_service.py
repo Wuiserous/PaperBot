@@ -73,6 +73,11 @@ def _use_blob_store() -> bool:
     return bool(os.getenv("VERCEL") and os.getenv("BLOB_READ_WRITE_TOKEN")) and not os.getenv(BLOB_DISABLED_ENV)
 
 
+def _require_durable_store() -> None:
+    if os.getenv("VERCEL") and not os.getenv("BLOB_READ_WRITE_TOKEN") and not os.getenv(BLOB_DISABLED_ENV):
+        raise RuntimeError("Vercel Blob is not configured. Add BLOB_READ_WRITE_TOKEN in Vercel environment variables and redeploy.")
+
+
 def _blob_client():
     try:
         from vercel.blob import BlobClient
@@ -121,12 +126,17 @@ def _blob_read_stream(stream) -> bytes:
 def _blob_get_bytes(pathname: str) -> bytes | None:
     result = _blob_client().get(pathname, access=BLOB_ACCESS)
     if result is None or getattr(result, "status_code", None) != 200:
-        return None
+        resolved_url = _blob_resolve_url(pathname)
+        if not resolved_url or resolved_url == pathname:
+            return None
+        result = _blob_client().get(resolved_url, access=BLOB_ACCESS)
+        if result is None or getattr(result, "status_code", None) != 200:
+            return None
     return _blob_read_stream(result.stream)
 
 
 def _blob_put_bytes(pathname: str, data: bytes, content_type: str) -> None:
-    _blob_client().put(
+    return _blob_client().put(
         pathname,
         data,
         access=BLOB_ACCESS,
@@ -134,6 +144,30 @@ def _blob_put_bytes(pathname: str, data: bytes, content_type: str) -> None:
         overwrite=True,
         multipart=True,
     )
+
+
+def _blob_result_url(result: Any, fallback: str) -> str:
+    if isinstance(result, dict):
+        return result.get("url") or fallback
+    return getattr(result, "url", None) or fallback
+
+
+def _blob_item_value(item: Any, key: str) -> Any:
+    if isinstance(item, dict):
+        return item.get(key)
+    return getattr(item, key, None)
+
+
+def _blob_resolve_url(pathname: str) -> str | None:
+    if str(pathname).startswith(("http://", "https://")):
+        return pathname
+    prefix = str(pathname).rsplit("/", 1)[0] + "/"
+    page = _blob_list_objects(prefix=prefix, limit=1000)
+    for item in _blob_item_value(page, "blobs") or []:
+        item_pathname = _blob_item_value(item, "pathname")
+        if item_pathname == pathname:
+            return _blob_item_value(item, "url") or pathname
+    return None
 
 
 def _blob_get_metadata(owner_user_id: int, template_id: str) -> dict[str, Any] | None:
@@ -163,6 +197,8 @@ def _blob_put_metadata(metadata: dict[str, Any]) -> None:
         "name": metadata["name"],
         "source_pdf_blob_path": metadata["source_pdf_blob_path"],
         "preview_blob_path": metadata["preview_blob_path"],
+        "source_pdf_blob_url": metadata.get("source_pdf_blob_url") or metadata.get("source_pdf_blob_path"),
+        "preview_blob_url": metadata.get("preview_blob_url") or metadata.get("preview_blob_path"),
         "page_width": float(metadata["page_width"]),
         "page_height": float(metadata["page_height"]),
         "fields": metadata.get("fields") if isinstance(metadata.get("fields"), list) else [],
@@ -213,6 +249,8 @@ def _blob_index_item(metadata: dict[str, Any]) -> dict[str, Any]:
         "name": metadata["name"],
         "source_pdf_blob_path": metadata["source_pdf_blob_path"],
         "preview_blob_path": metadata["preview_blob_path"],
+        "source_pdf_blob_url": metadata.get("source_pdf_blob_url") or metadata.get("source_pdf_blob_path"),
+        "preview_blob_url": metadata.get("preview_blob_url") or metadata.get("preview_blob_path"),
         "page_width": float(metadata["page_width"]),
         "page_height": float(metadata["page_height"]),
         "fields": metadata.get("fields") if isinstance(metadata.get("fields"), list) else [],
@@ -247,6 +285,8 @@ def _blob_template_from_metadata(metadata: dict[str, Any], include_assets: bool 
         "name": metadata["name"],
         "source_pdf_blob_path": metadata["source_pdf_blob_path"],
         "preview_blob_path": metadata["preview_blob_path"],
+        "source_pdf_blob_url": metadata.get("source_pdf_blob_url") or metadata.get("source_pdf_blob_path"),
+        "preview_blob_url": metadata.get("preview_blob_url") or metadata.get("preview_blob_path"),
         "page_width": float(metadata["page_width"]),
         "page_height": float(metadata["page_height"]),
         "fields": metadata.get("fields") if isinstance(metadata.get("fields"), list) else [],
@@ -257,13 +297,13 @@ def _blob_template_from_metadata(metadata: dict[str, Any], include_assets: bool 
         template["source_pdf_path"] = _blob_materialize(
             template["owner_user_id"],
             template["id"],
-            template["source_pdf_blob_path"],
+            template["source_pdf_blob_url"],
             "source.pdf",
         )
         template["preview_path"] = _blob_materialize(
             template["owner_user_id"],
             template["id"],
-            template["preview_blob_path"],
+            template["preview_blob_url"],
             "preview.png",
         )
         template["preview_data_url"] = _template_data_url(template["preview_path"])
@@ -277,10 +317,12 @@ def _blob_iter_metadata(owner_user_id: int) -> list[dict[str, Any]]:
     prefix = f"{BLOB_PREFIX}/{owner_user_id}/"
     while True:
         page = _blob_list_objects(prefix=prefix, cursor=cursor, limit=1000)
-        for item in page.blobs:
-            if not item.pathname.endswith("/metadata.json"):
+        blobs = _blob_item_value(page, "blobs") or []
+        for item in blobs:
+            item_pathname = _blob_item_value(item, "pathname") or ""
+            if not item_pathname.endswith("/metadata.json"):
                 continue
-            raw = _blob_get_bytes(item.pathname)
+            raw = _blob_get_bytes(_blob_item_value(item, "url") or item_pathname)
             if not raw:
                 continue
             try:
@@ -291,9 +333,9 @@ def _blob_iter_metadata(owner_user_id: int) -> list[dict[str, Any]]:
                 fields = metadata.get("fields")
                 metadata["fields"] = fields if isinstance(fields, list) else []
                 metadata_items.append(metadata)
-        if not page.has_more:
+        if not _blob_item_value(page, "has_more"):
             break
-        cursor = page.cursor
+        cursor = _blob_item_value(page, "cursor")
     return metadata_items
 
 
@@ -349,9 +391,9 @@ def _blob_create_template(owner_user_id: int, name: str, upload) -> str:
     source_blob_path = _blob_path(owner_user_id, template_id, "source.pdf")
     preview_blob_path = _blob_path(owner_user_id, template_id, "preview.png")
     with open(asset_path, "rb") as handle:
-        _blob_put_bytes(source_blob_path, handle.read(), "application/pdf")
+        source_blob = _blob_put_bytes(source_blob_path, handle.read(), "application/pdf")
     with open(preview_path, "rb") as handle:
-        _blob_put_bytes(preview_blob_path, handle.read(), "image/png")
+        preview_blob = _blob_put_bytes(preview_blob_path, handle.read(), "image/png")
 
     now = int(time.time())
     metadata = {
@@ -360,6 +402,8 @@ def _blob_create_template(owner_user_id: int, name: str, upload) -> str:
         "name": display_name,
         "source_pdf_blob_path": source_blob_path,
         "preview_blob_path": preview_blob_path,
+        "source_pdf_blob_url": _blob_result_url(source_blob, source_blob_path),
+        "preview_blob_url": _blob_result_url(preview_blob, preview_blob_path),
         "page_width": page_width,
         "page_height": page_height,
         "fields": [],
@@ -759,6 +803,7 @@ def restore_template_from_snapshot(owner_user_id: int, snapshot: dict[str, Any])
 def create_template(owner_user_id: int, name: str, upload) -> str:
     if _use_blob_store():
         return _blob_create_template(owner_user_id, name, upload)
+    _require_durable_store()
 
     _ensure_store()
     display_name = _normalize_text(name, "Untitled Template")
@@ -821,6 +866,7 @@ def create_template(owner_user_id: int, name: str, upload) -> str:
 def save_template(owner_user_id: int, template_id: str, name: str, fields: list[dict[str, Any]]) -> dict[str, Any]:
     if _use_blob_store():
         return _blob_save_template(owner_user_id, template_id, name, fields)
+    _require_durable_store()
 
     template = load_template(owner_user_id, template_id)
     if not template:
