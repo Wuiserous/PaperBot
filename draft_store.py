@@ -7,11 +7,17 @@ import time
 import uuid
 from typing import Optional
 
+from config_loader import load_project_env
+
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+load_project_env(BASE_DIR)
+
 
 DB_PATH = os.getenv(
     "WEB_DRAFT_DB",
     os.path.join(tempfile.gettempdir(), "paperbot_web_drafts.sqlite3") if os.getenv("VERCEL")
-    else os.path.join(os.path.dirname(os.path.abspath(__file__)), "paperbot_web_drafts.sqlite3"),
+    else os.path.join(BASE_DIR, "paperbot_web_drafts.sqlite3"),
 )
 TTL_SECONDS = 60 * 60 * 12
 STORE_DIR = os.path.join(

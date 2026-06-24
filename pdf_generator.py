@@ -13,6 +13,10 @@ from dateutil.relativedelta import relativedelta
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
+def _asset_path(relative_path: str) -> str:
+    return relative_path if os.path.isabs(relative_path) else os.path.join(BASE_DIR, relative_path)
+
+
 def _make_output_path(filename: str) -> str:
     stem, ext = os.path.splitext(filename)
     unique_filename = f"{stem}_{uuid.uuid4().hex[:8]}{ext or '.pdf'}"
@@ -44,7 +48,7 @@ def _create_preview_from_pdf(pdf_path: str) -> str:
 def generate_campus_ambassador_pdf_with_preview(name: str, create_preview: bool = True) -> tuple[str, str]:
     """Generates the CA PDF and a preview image of the first page."""
     # Step 1: Generate the full PDF as before
-    TEMPLATE_PATH = "templates/campus_ambassador.pdf"
+    TEMPLATE_PATH = _asset_path("templates/campus_ambassador.pdf")
     output_path = _make_output_path(f"CA_Letter_{name.replace(' ', '_')}.pdf")
 
     NAME_COORDS = (110, 244)
@@ -163,7 +167,7 @@ def generate_internship_acceptance_pdf_with_preview(name: str, month: str, domai
     else:
         NAME_COORDS, FROM_DATE_COORDS, TO_DATE_COORDS = (262, 307), (365, 560), (448, 560)
 
-    doc = fitz.open(template_path)
+    doc = fitz.open(_asset_path(template_path))
     page = doc[0]
     page.insert_text(NAME_COORDS, name, fontsize=12, fontname="helv", color=(0, 0, 0))
     page.insert_text(FROM_DATE_COORDS, from_date, fontsize=11, fontname="helv", color=(0, 0, 0))
@@ -181,7 +185,7 @@ def generate_internship_acceptance_pdf_with_preview(name: str, month: str, domai
 def generate_offer_letter_pdf_with_preview(name: str, training_from: str, create_preview: bool = True) -> tuple[str, str]:
     """Generates the Offer Letter PDF and a preview image."""
     # Step 1: Generate the full PDF as before
-    TEMPLATE_PATH = "templates/offer_letter.pdf"
+    TEMPLATE_PATH = _asset_path("templates/offer_letter.pdf")
     output_path = _make_output_path(f"Offer_Letter_{name.replace(' ', '_')}.pdf")
     NAME_COORDS, TODAY_DATE_COORDS = (91, 293), (94, 253)
     TRAINING_DATES_COORDS, INTERNSHIP_START_COORDS, INTERNSHIP_END_COORDS = (136, 374), (170, 401), (163, 428)
@@ -221,7 +225,7 @@ def generate_offer_letter_pdf_with_preview(name: str, training_from: str, create
 def generate_completion_certificate(name: str, issue_date: str, domain: str, identifier_id: str, create_preview: bool = True) -> tuple[str, str]:
     """Generates the CA PDF (Landscape) with centered domain text and a QR Code."""
 
-    TEMPLATE_PATH = "templates/completion_certificate.pdf"
+    TEMPLATE_PATH = _asset_path("templates/completion_certificate.pdf")
     output_path = _make_output_path(f"Course_Certificate_{name.replace(' ', '_')}.pdf")
 
     # --- Content Preparation ---
@@ -264,10 +268,10 @@ def generate_completion_certificate(name: str, issue_date: str, domain: str, ide
     # 2. Insert the font into the page resources with the name "ti"
     page_1.insert_font(fontname="times-roman", fontbuffer=times_font.buffer)
 
-    raleway_font = fitz.Font(fontfile="fonts/raleway.ttf")
+    raleway_font = fitz.Font(fontfile=_asset_path("fonts/raleway.ttf"))
     page_1.insert_font(fontname="raleway", fontbuffer=raleway_font.buffer)
 
-    pinyon_font = fitz.Font(fontfile="fonts/pinyon.ttf")
+    pinyon_font = fitz.Font(fontfile=_asset_path("fonts/pinyon.ttf"))
     page_1.insert_font(fontname="pinyon", fontbuffer=pinyon_font.buffer)
 
     # Insert Name
@@ -303,7 +307,7 @@ def generate_completion_certificate(name: str, issue_date: str, domain: str, ide
 def ca_certificate(name: str, issue_date: str, create_preview: bool = True) -> tuple[str, str]:
     """Generates the CA PDF (Landscape) with centered domain text and a QR Code."""
 
-    TEMPLATE_PATH = "templates/ca_certificate.pdf"
+    TEMPLATE_PATH = _asset_path("templates/ca_certificate.pdf")
     output_path = _make_output_path(f"CA_Certificate_{name.replace(' ', '_')}.pdf")
 
     # --- Content Preparation ---
@@ -330,10 +334,10 @@ Has successfully completed the Persevex Campus Representative Program from {issu
     # 2. Insert the font into the page resources with the name "ti"
     page_1.insert_font(fontname="times-roman", fontbuffer=times_font.buffer)
 
-    raleway_font = fitz.Font(fontfile="fonts/raleway.ttf")
+    raleway_font = fitz.Font(fontfile=_asset_path("fonts/raleway.ttf"))
     page_1.insert_font(fontname="raleway", fontbuffer=raleway_font.buffer)
 
-    pinyon_font = fitz.Font(fontfile="fonts/pinyon.ttf")
+    pinyon_font = fitz.Font(fontfile=_asset_path("fonts/pinyon.ttf"))
     page_1.insert_font(fontname="pinyon", fontbuffer=pinyon_font.buffer)
 
     # Insert Name

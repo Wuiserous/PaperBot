@@ -20,6 +20,8 @@ app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["SESSION_COOKIE_SECURE"] = bool(os.getenv("VERCEL"))
 web_auth.register_auth_routes(app)
 
+DRAFT_SESSION_KEY = "web_draft_payload"
+
 
 def _get_form_values_by_type():
     values = session.get("web_form_values_by_type", {})
@@ -47,8 +49,64 @@ def _clear_form_values(letter_type: str | None = None) -> None:
     session.pop("web_form_values", None)
 
 
+def _draft_file_exists(draft: dict | None, key: str) -> bool:
+    path = (draft or {}).get(key)
+    return bool(path and os.path.exists(path))
+
+
+def _remember_session_draft(draft_id: str, payload: dict) -> None:
+    draft_payload = dict(payload)
+    draft_payload["id"] = draft_id
+    session["web_draft_id"] = draft_id
+    session[DRAFT_SESSION_KEY] = draft_payload
+    session.modified = True
+
+
+def _regenerate_draft(payload: dict | None, draft_id: str | None = None) -> dict | None:
+    if not payload:
+        return None
+
+    import letter_service
+
+    letter_type = payload.get("letter_type")
+    form_data = payload.get("form_data") or {}
+    if not letter_type or not isinstance(form_data, dict):
+        return None
+
+    regenerated_payload = letter_service.build_letter_preview(letter_type, form_data)
+    saved_draft_id = draft_store.save_draft(regenerated_payload, draft_id=draft_id)
+    stored_draft = draft_store.load_draft(saved_draft_id) or regenerated_payload
+    stored_draft["id"] = saved_draft_id
+    _remember_session_draft(saved_draft_id, stored_draft)
+    return stored_draft
+
+
+def load_active_draft(regenerate_missing_files: bool = True) -> dict | None:
+    draft_id = session.get("web_draft_id")
+    draft = draft_store.load_draft(draft_id)
+    if draft:
+        draft["id"] = draft_id
+        session[DRAFT_SESSION_KEY] = draft
+    else:
+        draft = session.get(DRAFT_SESSION_KEY)
+        if isinstance(draft, dict):
+            draft = dict(draft)
+            draft["id"] = draft.get("id") or draft_id
+        else:
+            draft = None
+
+    if regenerate_missing_files and draft and (not _draft_file_exists(draft, "pdf_path") or not _draft_file_exists(draft, "preview_path")):
+        try:
+            draft = _regenerate_draft(draft, draft.get("id") or draft_id)
+        except Exception:
+            logging.exception("Failed to regenerate missing draft assets")
+
+    return draft
+
+
 def clear_session_draft():
     draft_store.delete_draft(session.pop("web_draft_id", None))
+    session.pop(DRAFT_SESSION_KEY, None)
 
 
 def build_dashboard_context():
@@ -63,9 +121,7 @@ def build_dashboard_context():
     if selected_type not in schema:
         selected_type = letter_types[0][0]
         session["selected_letter_type"] = selected_type
-    draft = draft_store.load_draft(session.get("web_draft_id"))
-    if draft:
-        draft["id"] = session.get("web_draft_id")
+    draft = load_active_draft()
     label_map = dict(letter_types)
     draft_label = label_map.get(draft["letter_type"], draft.get("recipient_data", {}).get("letter_type", "")) if draft else ""
     form_values_by_type = _get_form_values_by_type()
@@ -108,9 +164,10 @@ def web_preview():
         preview_payload = letter_service.build_letter_preview(letter_type, form_data, owner_user_id=user.get("id"))
         previous_draft_id = session.get("web_draft_id")
         new_draft_id = draft_store.save_draft(preview_payload)
-        session["web_draft_id"] = new_draft_id
+        stored_draft = draft_store.load_draft(new_draft_id) or preview_payload
         if previous_draft_id and previous_draft_id != new_draft_id:
             draft_store.delete_draft(previous_draft_id)
+        _remember_session_draft(new_draft_id, stored_draft)
         if letter_type == "internship_letter":
             _remember_form_values(letter_type, preview_payload["form_data"])
         session["just_previewed"] = True
@@ -129,14 +186,19 @@ def web_send():
     import letter_service
 
     requested_draft_id = request.form.get("draft_id")
-    active_draft_id = session.get("web_draft_id")
+    session_payload = session.get(DRAFT_SESSION_KEY)
+    active_draft_id = session.get("web_draft_id") or (session_payload.get("id") if isinstance(session_payload, dict) else None)
     if requested_draft_id and requested_draft_id != active_draft_id:
         flash("The staged preview changed. Please review the latest preview before sending.")
         return redirect(url_for("web_dashboard"))
 
-    draft = draft_store.load_draft(active_draft_id)
+    draft = load_active_draft()
     if not draft:
         flash("Generate a preview first.")
+        return redirect(url_for("web_dashboard"))
+    if not _draft_file_exists(draft, "pdf_path"):
+        flash("The preview expired before sending. Generate it again.")
+        clear_session_draft()
         return redirect(url_for("web_dashboard"))
 
     session["selected_letter_type"] = draft["letter_type"]
@@ -178,6 +240,10 @@ def web_clear_draft():
 @app.route("/app/preview-image/<draft_id>", methods=["GET"])
 def web_preview_image(draft_id):
     draft = draft_store.load_draft(draft_id)
+    if draft:
+        draft["id"] = draft_id
+    if (not draft or not _draft_file_exists(draft, "preview_path")) and draft_id == session.get("web_draft_id"):
+        draft = load_active_draft()
     if not draft:
         return ("Preview not found", 404)
 

@@ -108,6 +108,7 @@ def send_personalized_email(pdf_path: str, recipient_data: dict, sender_account:
     Sends an email using the Resend API with a PDF attachment.
     """
     try:
+        resend.api_key = os.getenv("RESEND_API_KEY") or resend.api_key
         if not resend.api_key:
             print("[ERROR] RESEND_API_KEY is not configured.")
             return False

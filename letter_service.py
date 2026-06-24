@@ -103,6 +103,14 @@ def cleanup_files(*paths: str) -> None:
             os.remove(path)
 
 
+def _ensure_generated_assets(pdf_path: str, preview_path: str, create_preview: bool) -> None:
+    if not pdf_path or not os.path.exists(pdf_path):
+        raise RuntimeError("PDF generation failed. Please try again.")
+    if create_preview and (not preview_path or not os.path.exists(preview_path)):
+        cleanup_files(pdf_path)
+        raise RuntimeError("Preview generation failed. Please try again.")
+
+
 def build_letter_preview(letter_type: str, form_data: Dict[str, str], create_preview: bool = True, owner_user_id: int | None = None) -> Dict[str, object]:
     data = _clean_form_data(form_data)
     _ensure_required_fields(letter_type, data)
@@ -121,6 +129,9 @@ def build_letter_preview(letter_type: str, form_data: Dict[str, str], create_pre
         student_data = database_handler.fetch_student_from_client_sheet(data["name"])
         if not student_data:
             raise ValueError(f"Could not find '{data['name']}' in the onboarding sheet.")
+        missing_student_fields = [field for field in ("name", "email", "month", "domain") if not student_data.get(field)]
+        if missing_student_fields:
+            raise ValueError(f"Onboarding sheet result is missing: {', '.join(missing_student_fields)}.")
 
         pdf_path, preview_path = pdf_generator.generate_internship_acceptance_pdf_with_preview(
             name=student_data["name"],
@@ -187,6 +198,8 @@ def build_letter_preview(letter_type: str, form_data: Dict[str, str], create_pre
 
     else:
         raise ValueError("Unsupported letter type selected.")
+
+    _ensure_generated_assets(pdf_path, preview_path, create_preview)
 
     return {
         "letter_type": letter_type,
