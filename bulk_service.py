@@ -16,11 +16,13 @@ import letter_service
 
 
 RATE_LIMIT_INTERVAL_SECONDS = 0.35
+SERVERLESS_ROWS_PER_STATUS_POLL = 1
 MAX_BULK_ROWS = 500
 DEFAULT_DB_DIR = tempfile.gettempdir() if os.getenv("VERCEL") else os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.getenv("BULK_JOB_DB", os.path.join(DEFAULT_DB_DIR, "bulk_jobs.sqlite3"))
 
 _db_lock = threading.Lock()
+_job_locks: Dict[str, threading.Lock] = {}
 
 
 def get_required_headers(letter_type: str) -> List[str]:
@@ -121,14 +123,15 @@ def create_bulk_job(letter_type: str, rows: List[dict]) -> str:
         conn.execute(
             """
             INSERT INTO bulk_jobs
-            (id, letter_type, status, total, processed, sent, failed, current, errors_json, started_at, finished_at, updated_at)
-            VALUES (?, ?, ?, ?, 0, 0, 0, '', '[]', NULL, NULL, ?)
+            (id, letter_type, status, total, processed, sent, failed, current, errors_json, rows_json, started_at, finished_at, updated_at)
+            VALUES (?, ?, ?, ?, 0, 0, 0, '', '[]', ?, NULL, NULL, ?)
             """,
-            (job_id, letter_type, "queued", len(rows), now),
+            (job_id, letter_type, "queued", len(rows), json.dumps(rows), now),
         )
 
-    worker = threading.Thread(target=_run_bulk_job, args=(job_id, letter_type, rows), daemon=True)
-    worker.start()
+    if not os.getenv("VERCEL"):
+        worker = threading.Thread(target=_run_bulk_job, args=(job_id, letter_type, rows), daemon=True)
+        worker.start()
     return job_id
 
 
@@ -137,6 +140,44 @@ def get_bulk_job(job_id: str) -> Optional[dict]:
     with _connect() as conn:
         row = conn.execute("SELECT * FROM bulk_jobs WHERE id = ?", (job_id,)).fetchone()
     return _row_to_job(row) if row else None
+
+
+def advance_bulk_job(job_id: str) -> Optional[dict]:
+    if not os.getenv("VERCEL"):
+        return get_bulk_job(job_id)
+
+    lock = _get_job_lock(job_id)
+    if not lock.acquire(blocking=False):
+        return get_bulk_job(job_id)
+
+    try:
+        job = get_bulk_job(job_id)
+        if not job or job["status"] in {"completed", "failed"}:
+            return job
+
+        rows = _get_job_rows(job_id)
+        if not rows:
+            _update_job(job_id, status="failed", current="", finished_at=_now())
+            return get_bulk_job(job_id)
+
+        if job["status"] == "queued":
+            _update_job(job_id, status="running", started_at=_now())
+
+        for _ in range(SERVERLESS_ROWS_PER_STATUS_POLL):
+            job = get_bulk_job(job_id) or {}
+            processed = int(job.get("processed") or 0)
+            if processed >= len(rows):
+                break
+            _process_bulk_row(job_id, job.get("letter_type") or "", rows[processed])
+
+        job = get_bulk_job(job_id) or {}
+        if int(job.get("processed") or 0) >= int(job.get("total") or 0):
+            final_status = "failed" if job.get("failed") else "completed"
+            _update_job(job_id, status=final_status, current="", finished_at=_now())
+
+        return get_bulk_job(job_id)
+    finally:
+        lock.release()
 
 
 def export_failed_rows(job_id: str) -> str:
@@ -175,12 +216,16 @@ def _init_db() -> None:
                     failed INTEGER NOT NULL,
                     current TEXT NOT NULL,
                     errors_json TEXT NOT NULL,
+                    rows_json TEXT NOT NULL DEFAULT '[]',
                     started_at TEXT,
                     finished_at TEXT,
                     updated_at TEXT NOT NULL
                 )
                 """
             )
+            columns = [row["name"] for row in conn.execute("PRAGMA table_info(bulk_jobs)").fetchall()]
+            if "rows_json" not in columns:
+                conn.execute("ALTER TABLE bulk_jobs ADD COLUMN rows_json TEXT NOT NULL DEFAULT '[]'")
 
 
 def _has_running_job() -> bool:
@@ -206,6 +251,23 @@ def _row_to_job(row: sqlite3.Row) -> dict:
         "finished_at": row["finished_at"],
         "updated_at": row["updated_at"],
     }
+
+
+def _get_job_rows(job_id: str) -> List[dict]:
+    with _connect() as conn:
+        row = conn.execute("SELECT rows_json FROM bulk_jobs WHERE id = ?", (job_id,)).fetchone()
+    if not row:
+        return []
+    return json.loads(row["rows_json"] or "[]")
+
+
+def _get_job_lock(job_id: str) -> threading.Lock:
+    with _db_lock:
+        lock = _job_locks.get(job_id)
+        if not lock:
+            lock = threading.Lock()
+            _job_locks[job_id] = lock
+        return lock
 
 
 def _update_job(job_id: str, **updates) -> None:
@@ -244,51 +306,76 @@ def _append_error(job_id: str, error_row: dict) -> None:
     _update_job(job_id, errors_json=json.dumps(errors))
 
 
-def _run_bulk_job(job_id: str, letter_type: str, rows: List[dict]) -> None:
-    _update_job(job_id, status="running", started_at=_now())
-
-    for row in rows:
-        row_number = row.get("_row_number", "")
-        name = row.get("name", "")
-        _update_job(job_id, current=name or f"Row {row_number}")
-
-        preview_payload = None
+def _log_activity_async(recipient_data: dict, status: str) -> None:
+    def worker() -> None:
         try:
-            form_data = {key: value for key, value in row.items() if not key.startswith("_")}
-            preview_payload = letter_service.build_letter_preview(letter_type, form_data, create_preview=False)
-            sent, recipient_data = letter_service.send_letter_from_preview(preview_payload)
-
-            if not sent:
-                raise RuntimeError("Email provider did not confirm send.")
-
             database_handler.log_activity(
                 recipient_data["letter_type"],
                 recipient_data["name"],
                 recipient_data["email"],
                 "Web App Bulk",
-                "Sent",
+                status,
             )
-            _increment_job(job_id, sent=1)
-
         except Exception as exc:
-            error_row = {
-                "row": row_number,
-                "name": row.get("name", ""),
-                "email": row.get("email", ""),
-                "domain": row.get("domain", ""),
-                "training_from": row.get("training_from", ""),
-                "date": row.get("date", ""),
-                "cert_id": row.get("cert_id", ""),
-                "error": str(exc),
-            }
-            _append_error(job_id, error_row)
-            _increment_job(job_id, failed=1)
-        finally:
-            if preview_payload:
-                letter_service.cleanup_files(preview_payload.get("pdf_path"), preview_payload.get("preview_path"))
+            print(f"Bulk activity logging failed for {recipient_data.get('email', 'unknown')}: {exc}")
 
-            _increment_job(job_id, processed=1)
-            time.sleep(RATE_LIMIT_INTERVAL_SECONDS)
+    threading.Thread(target=worker, daemon=True).start()
+
+
+def _process_bulk_row(job_id: str, letter_type: str, row: dict) -> None:
+    row_number = row.get("_row_number", "")
+    name = row.get("name", "")
+    _update_job(job_id, current=name or f"Row {row_number}")
+
+    preview_payload = None
+    try:
+        form_data = {key: value for key, value in row.items() if not key.startswith("_")}
+        preview_payload = letter_service.build_letter_preview(letter_type, form_data, create_preview=False)
+        sent, recipient_data = letter_service.send_letter_from_preview(preview_payload)
+
+        if not sent:
+            raise RuntimeError("Email provider did not confirm send.")
+
+        _increment_job(job_id, sent=1)
+        _log_activity_async(recipient_data, "Sent")
+
+    except Exception as exc:
+        error_row = {
+            "row": row_number,
+            "name": row.get("name", ""),
+            "email": row.get("email", ""),
+            "domain": row.get("domain", ""),
+            "training_from": row.get("training_from", ""),
+            "date": row.get("date", ""),
+            "cert_id": row.get("cert_id", ""),
+            "error": str(exc),
+        }
+        _append_error(job_id, error_row)
+        _increment_job(job_id, failed=1)
+        _log_activity_async(
+            {
+                "letter_type": letter_service.get_letter_type_map().get(letter_type, letter_type),
+                "name": row.get("name", "") or f"Row {row_number}",
+                "email": row.get("email", ""),
+            },
+            "Failed",
+        )
+    finally:
+        if preview_payload:
+            try:
+                letter_service.cleanup_files(preview_payload.get("pdf_path"), preview_payload.get("preview_path"))
+            except Exception as exc:
+                print(f"Bulk cleanup failed for row {row_number}: {exc}")
+
+        _increment_job(job_id, processed=1)
+
+
+def _run_bulk_job(job_id: str, letter_type: str, rows: List[dict]) -> None:
+    _update_job(job_id, status="running", started_at=_now())
+
+    for row in rows:
+        _process_bulk_row(job_id, letter_type, row)
+        time.sleep(RATE_LIMIT_INTERVAL_SECONDS)
 
     job = get_bulk_job(job_id) or {}
     final_status = "failed" if job.get("failed") else "completed"

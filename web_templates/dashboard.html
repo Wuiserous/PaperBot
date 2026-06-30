@@ -909,7 +909,7 @@
 
         function renderBulkJob(job) {
             const total = job.total || 0;
-            const processed = job.processed || 0;
+            const processed = Math.max(job.processed || 0, (job.sent || 0) + (job.failed || 0));
             const percent = total ? Math.round((processed / total) * 100) : 0;
             bulkState.textContent = job.status;
             bulkCount.textContent = `${processed}/${total}`;
@@ -934,7 +934,7 @@
             }
             renderBulkJob(data.job);
             if (!['completed', 'failed'].includes(data.job.status)) {
-                setTimeout(() => pollBulkJob(jobId), 1000);
+                setTimeout(() => pollBulkJob(jobId), 250);
             }
         }
 

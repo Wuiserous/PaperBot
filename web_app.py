@@ -279,7 +279,7 @@ def web_bulk_start():
 def web_bulk_status(job_id):
     import bulk_service
 
-    job = bulk_service.get_bulk_job(job_id)
+    job = bulk_service.advance_bulk_job(job_id)
     if not job:
         return jsonify({"ok": False, "error": "Bulk job not found."}), 404
     return jsonify({"ok": True, "job": job})
