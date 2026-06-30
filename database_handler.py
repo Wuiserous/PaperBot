@@ -189,12 +189,17 @@ def fetch_student_from_client_sheet(name: str):
 
         if data.get("status") == "success":
             return data  # Return the full JSON object as is
-        else:
-            print(f"Client's Sheet API Error: {data.get('message')}")
+        if data.get("status") in {"not_found", "missing"}:
             return None
+        message = data.get("message") or "Unknown error from client's sheet."
+        print(f"Client's Sheet API Error: {message}")
+        raise RuntimeError(message)
 
-    except Exception as e:
+    except requests.RequestException as e:
         print(f"HTTP Request to client's sheet failed: {e}")
         raise RuntimeError(f"Could not check the onboarding sheet: {e}") from e
+    except ValueError as e:
+        print(f"Client's Sheet API returned invalid JSON: {e}")
+        raise RuntimeError("Could not check the onboarding sheet: invalid JSON response.") from e
 
 # print(fetch_student_from_client_sheet('Wuis'))

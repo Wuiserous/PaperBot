@@ -2,7 +2,9 @@ import csv
 import io
 import json
 import os
+import re
 import sqlite3
+import tempfile
 import threading
 import time
 import uuid
@@ -15,7 +17,8 @@ import letter_service
 
 RATE_LIMIT_INTERVAL_SECONDS = 0.35
 MAX_BULK_ROWS = 500
-DB_PATH = os.getenv("BULK_JOB_DB", os.path.join(os.path.dirname(os.path.abspath(__file__)), "bulk_jobs.sqlite3"))
+DEFAULT_DB_DIR = tempfile.gettempdir() if os.getenv("VERCEL") else os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.getenv("BULK_JOB_DB", os.path.join(DEFAULT_DB_DIR, "bulk_jobs.sqlite3"))
 
 _db_lock = threading.Lock()
 
@@ -34,6 +37,22 @@ def get_header_formats() -> Dict[str, str]:
     }
 
 
+def _normalize_header(header: str) -> str:
+    normalized = (header or "").strip().lstrip("\ufeff").lower()
+    normalized = re.sub(r"[^a-z0-9]+", "_", normalized)
+    return normalized.strip("_")
+
+
+def _build_header_aliases(letter_type: str) -> Dict[str, str]:
+    schema = letter_service.get_letter_schema().get(letter_type) or {}
+    aliases = {}
+    for field in schema.get("fields", []):
+        field_name = field["name"]
+        aliases[_normalize_header(field_name)] = field_name
+        aliases[_normalize_header(field.get("label", ""))] = field_name
+    return aliases
+
+
 def parse_csv_upload(letter_type: str, file_storage) -> List[dict]:
     required_headers = get_required_headers(letter_type)
     if not required_headers:
@@ -43,16 +62,34 @@ def parse_csv_upload(letter_type: str, file_storage) -> List[dict]:
     if not raw:
         raise ValueError("Upload a CSV file.")
 
-    text = raw.decode("utf-8-sig")
+    try:
+        text = raw.decode("utf-8-sig")
+    except UnicodeDecodeError as exc:
+        raise ValueError("Upload a UTF-8 CSV file. Export the sheet as CSV and try again.") from exc
+
     reader = csv.DictReader(io.StringIO(text))
     headers = reader.fieldnames or []
-    missing = [header for header in required_headers if header not in headers]
+    header_aliases = _build_header_aliases(letter_type)
+    canonical_headers = {}
+    for header in headers:
+        canonical = header_aliases.get(_normalize_header(header))
+        if canonical:
+            canonical_headers[header] = canonical
+
+    missing = [header for header in required_headers if header not in canonical_headers.values()]
     if missing:
-        raise ValueError(f"CSV missing headers: {', '.join(missing)}")
+        expected = ", ".join(required_headers)
+        found = ", ".join(headers) if headers else "none"
+        raise ValueError(f"CSV missing headers: {', '.join(missing)}. Expected: {expected}. Found: {found}.")
 
     rows = []
     for index, row in enumerate(reader, start=2):
-        clean_row = {key: (value or "").strip() for key, value in row.items()}
+        clean_row = {}
+        for original_header, value in row.items():
+            canonical = canonical_headers.get(original_header)
+            if canonical:
+                clean_row[canonical] = (value or "").strip()
+
         if not any(clean_row.values()):
             continue
 

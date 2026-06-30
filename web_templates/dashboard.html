@@ -916,7 +916,8 @@
             bulkProgress.style.width = `${percent}%`;
             bulkSent.textContent = `Sent ${job.sent || 0}`;
             bulkFailed.textContent = `Failed ${job.failed || 0}`;
-            bulkError.textContent = job.current ? `Current: ${job.current}` : '';
+            const firstError = job.errors && job.errors.length ? job.errors[0].error : '';
+            bulkError.textContent = job.current ? `Current: ${job.current}` : firstError;
 
             if (job.failed > 0 && ['completed', 'failed'].includes(job.status)) {
                 bulkExportWrap.style.display = 'flex';
